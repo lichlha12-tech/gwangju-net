@@ -1,0 +1,1334 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="robots" content="noindex,nofollow"><style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}</style><script src="config.js"></script></head><body>
+<title>광주 관망 모바일</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap">
+<style>
+
+/* Layout: full-bleed pipe-network canvas, floating search on top, draggable result sheet at bottom (field-instrument feel) */
+:root{
+  /* GIS PIPE 화면 문법: 흰 지도 바탕, 검은 관로·절점, 반투명 빨강 선택 */
+  --ground:#f2f0eb; --surface:#ffffff; --surface2:#f4f4f4; --ink:#1a1a1a; --muted:#666b70; --rule:#d0d0d0;
+  --pipe:#141414; --pipe-major:#000000; --dong:#b8b2a6; --accent:#2b5fb4; --accent-ink:#ffffff;
+  --cut:#d7263d; --low:#ef8a00; --ok:#1c9a4e; --open:#1c9a4e; --closed:#141414; --sel:rgba(222,52,64,.62); --sel-solid:#de3440;
+  --shadow:0 2px 10px rgba(0,0,0,.18);
+  --f-ui:"Malgun Gothic","맑은 고딕","Noto Sans KR","Apple SD Gothic Neo",system-ui,sans-serif;
+  --f-data:"Malgun Gothic","맑은 고딕","Noto Sans KR","Apple SD Gothic Neo",system-ui,sans-serif;
+  color-scheme:light;
+}
+[hidden]{display:none!important}
+html,body{height:100%}
+body{background:var(--ground);color:var(--ink);font-family:var(--f-ui);font-size:14px;overflow:hidden;-webkit-tap-highlight-color:transparent}
+#map{position:fixed;inset:0;width:100%;height:100%;touch-action:none;display:block}
+button{font:inherit;color:inherit}
+.num{font-family:var(--f-data);font-variant-numeric:tabular-nums}
+
+/* top bar */
+.top{position:fixed;left:0;right:0;top:0;padding:calc(env(safe-area-inset-top,0px) + 10px) 12px 0;display:flex;flex-direction:column;gap:8px;pointer-events:none;z-index:20}
+.searchrow{display:flex;gap:8px;pointer-events:auto;max-width:560px;width:100%;margin:0 auto}
+.search{flex:1;min-width:0;display:flex;align-items:center;background:var(--surface);border-radius:4px;box-shadow:var(--shadow);border:1px solid #bdbdbd;height:44px;padding:0 6px 0 12px;gap:6px}
+.search input{flex:1;min-width:0;border:0;background:transparent;color:var(--ink);font:inherit;font-size:16px;outline:none}
+.search input::placeholder{color:var(--muted)}
+.iconbtn{width:44px;height:44px;flex:none;display:grid;place-items:center;border-radius:4px;background:var(--surface);border:1px solid var(--rule);box-shadow:var(--shadow);cursor:pointer}
+.iconbtn svg,.search svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.8}
+.chips{display:flex;gap:6px;pointer-events:auto;max-width:560px;width:100%;margin:0 auto;overflow-x:auto;scrollbar-width:none;padding-bottom:4px}.chips::-webkit-scrollbar{display:none}
+.chip{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 10px;border-radius:3px;background:var(--surface);border:1px solid #bdbdbd;box-shadow:0 1px 4px rgba(0,0,0,.12);flex:none;font-size:13px;cursor:pointer;white-space:nowrap}
+.chip select{border:0;background:transparent;color:var(--ink);font:inherit;font-family:var(--f-data);outline:none;padding:0;cursor:pointer}
+.chip.on{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.chip .dot{width:8px;height:8px;border-radius:50%;background:var(--muted)}
+.chip .dot.ready{background:var(--ok)} .chip .dot.busy{background:var(--low)} .chip .dot.fail{background:var(--cut)}
+.results{pointer-events:auto;max-width:560px;width:100%;margin:0 auto;background:var(--surface);border:1px solid #bdbdbd;border-radius:4px;box-shadow:var(--shadow);max-height:52vh;overflow:auto}
+.results button{display:flex;width:100%;text-align:left;gap:10px;align-items:baseline;padding:11px 14px;border:0;background:transparent;border-bottom:1px solid var(--rule);cursor:pointer}
+.results button:last-child{border-bottom:0}
+.results button:hover,.results button:focus-visible{background:var(--surface2);outline:none}
+.results .kind{flex:none;font-size:11px;color:var(--muted);width:64px}
+.results .name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.results .sub{font-size:12px;color:var(--muted);flex:none}
+
+/* legend */
+.legend{position:fixed;right:12px;z-index:15;background:var(--surface);border:1px solid #bdbdbd;border-radius:3px;padding:8px 10px;font-size:12px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:4px;max-width:46vw}
+.legend .row{display:flex;align-items:center;gap:6px;min-width:0}
+.legend .sw{width:16px;height:4px;border-radius:2px;flex:none}
+.legend .lab{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* fabs */
+.fab{position:fixed;right:12px;z-index:15;display:flex;flex-direction:column;gap:8px}
+
+/* context menu */
+.ctx{position:fixed;z-index:40;background:var(--surface);border:1px solid #a8a8a8;border-radius:3px;box-shadow:var(--shadow);min-width:210px;overflow:hidden}
+.ctx .hd{padding:10px 14px 8px;font-size:12px;color:var(--muted);border-bottom:1px solid var(--rule)}
+.ctx .hd b{color:var(--ink);font-weight:600}
+.ctx button{display:flex;gap:10px;align-items:center;width:100%;padding:11px 14px;border:0;background:transparent;text-align:left;cursor:pointer;font-size:15px}
+.ctx button:hover,.ctx button:focus-visible{background:#e5f0fb;outline:none}
+.ctx .sw{width:10px;height:10px;border-radius:3px;flex:none}
+
+/* sheet */
+.sheet{position:fixed;left:0;right:0;bottom:0;z-index:30;background:var(--surface);border-top-left-radius:8px;border-top-right-radius:8px;border-top:1px solid #bdbdbd;box-shadow:0 -4px 18px rgba(0,0,0,.16);display:flex;flex-direction:column;max-width:720px;margin:0 auto;transition:height .22s ease;height:0;padding-bottom:env(safe-area-inset-bottom,0px)}
+.sheet.dragging{transition:none}
+.grab{flex:none;padding:8px 16px 4px;cursor:grab;touch-action:none}
+.grab i{display:block;width:40px;height:4px;border-radius:2px;background:var(--rule);margin:0 auto 8px}
+.sh-head{display:flex;align-items:flex-start;gap:10px}
+.sh-title{flex:1;min-width:0}
+.sh-title h2{margin:0;font-size:17px;font-weight:600;text-wrap:balance}
+.sh-title p{margin:2px 0 0;color:var(--muted);font-size:12.5px}
+.xbtn{width:32px;height:32px;border-radius:3px;border:1px solid var(--rule);background:var(--surface2);display:grid;place-items:center;cursor:pointer;flex:none}
+.xbtn svg{width:16px;height:16px;stroke:currentColor;stroke-width:2;fill:none}
+.sh-body{flex:1;overflow:auto;padding:4px 16px 20px;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
+.sh-body h3{font-size:12.5px;color:var(--ink);font-weight:700;margin:16px -16px 0;padding:6px 16px;background:#ececec;border-top:1px solid var(--rule);border-bottom:1px solid var(--rule)}
+.kv{display:grid;grid-template-columns:1fr 1fr;margin:0 -16px;border-bottom:1px solid #e3e3e3}
+.kv div{display:grid;grid-template-columns:minmax(84px,44%) 1fr;min-width:0;border-top:1px solid #e3e3e3;align-items:center}
+.kv span{font-size:12.5px;color:#333;background:#f6f6f6;padding:7px 8px 7px 16px;height:100%;display:flex;align-items:center;border-right:1px solid #e3e3e3}
+.kv b{font-weight:700;font-variant-numeric:tabular-nums;font-size:14px;overflow-wrap:anywhere;padding:7px 8px}
+@media (max-width:520px){.kv{grid-template-columns:1fr}}
+.kv b.t{font-family:var(--f-ui)}
+.tbl{overflow-x:auto;margin:0 -16px}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th{font-weight:500;color:var(--muted);font-size:12px;text-align:left;padding:5px 8px;border-bottom:1px solid var(--rule);white-space:nowrap;background:#fafafa}
+td{padding:7px 8px;border-bottom:1px solid #e3e3e3;vertical-align:top}
+td.r,th.r{text-align:right}
+td .num,td.num{font-family:var(--f-data);font-variant-numeric:tabular-nums}
+tr.click{cursor:pointer} tr.click:hover td{background:var(--surface2)}
+tr.sel td{background:color-mix(in srgb,var(--ok) 14%,transparent)}
+.tag{display:inline-block;font-size:11px;padding:1px 6px;border-radius:4px;border:1px solid var(--rule);color:var(--muted);white-space:nowrap}
+.tag.pump{border-color:#7b5cd6;color:#7b5cd6} .tag.prv{border-color:#c2410c;color:#c2410c} .tag.tcv{border-color:var(--ok);color:var(--ok)} .tag.res{border-color:var(--accent);color:var(--accent)} .tag.cut{border-color:var(--cut);color:var(--cut)}
+.bar{height:6px;background:var(--surface2);border-radius:3px;overflow:hidden;min-width:60px}
+.bar i{display:block;height:100%;border-radius:3px}
+.sw{display:inline-block;width:10px;height:10px;border-radius:3px;vertical-align:-1px;margin-right:6px}
+.seg{display:inline-flex;border:1px solid #b8b8b8;border-radius:3px;overflow:hidden;margin:10px 0 2px}.seg button{border:0;background:#fff;padding:7px 12px;font-size:13px;cursor:pointer}.seg button+button{border-left:1px solid #b8b8b8}.seg button.on{background:var(--accent);color:#fff}
+.actions{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0 4px}
+.btn{height:38px;padding:0 13px;border-radius:3px;border:1px solid #b8b8b8;background:linear-gradient(#fff,#f0f0f0);cursor:pointer;font-weight:500;display:inline-flex;align-items:center;gap:6px;text-decoration:none;color:var(--ink);font-size:14px}
+.btn.pri{background:var(--accent);background-image:none;color:var(--accent-ink);border-color:var(--accent)}
+.btn.danger{border-color:var(--cut);color:var(--cut)}
+.btn:disabled{opacity:.5;cursor:default}
+.btn:focus-visible,.chip:focus-visible,.iconbtn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.note{font-size:12.5px;color:var(--muted);line-height:1.55;margin:8px 0}
+.callout{border-left:3px solid var(--accent);background:var(--surface2);padding:10px 12px;border-radius:0;margin:10px 0;font-size:13.5px;line-height:1.5}
+.callout.warn{border-color:var(--low)} .callout.bad{border-color:var(--cut)} .callout.good{border-color:var(--ok)}
+.list-ops{display:flex;flex-direction:column;gap:6px;margin:6px 0}
+.op{display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--rule);border-radius:3px;background:var(--surface)}
+.op .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.op .st{font-size:12px;font-weight:600}
+.op .st.c{color:var(--cut)} .op .st.o{color:var(--ok)}
+.row2{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.row2 label{font-size:13px;color:var(--muted)}
+.row2 select{height:36px;border-radius:3px;border:1px solid var(--rule);background:var(--surface2);color:var(--ink);font:inherit;padding:0 8px}
+.prog{height:4px;background:var(--surface2);border-radius:2px;overflow:hidden;margin:8px 0}
+.prog i{display:block;height:100%;background:var(--accent);width:0;transition:width .2s}
+.editbar{position:fixed;left:50%;transform:translateX(-50%);z-index:25;background:var(--ink);color:var(--surface);padding:8px 8px 8px 14px;border-radius:4px;display:flex;gap:10px;align-items:center;font-size:13px;box-shadow:var(--shadow);max-width:calc(100vw - 32px)}
+.editbar button{height:30px;border-radius:15px;border:0;background:var(--surface);color:var(--ink);padding:0 12px;cursor:pointer;font-weight:600}
+
+/* loader */
+.loader{position:fixed;inset:0;z-index:60;display:grid;place-items:center;background:var(--ground)}
+.loader .box{width:min(320px,calc(100vw - 48px));display:flex;flex-direction:column;gap:10px}
+.loader h1{font-size:20px;margin:0;font-weight:600}
+.loader p{margin:0;color:var(--muted);font-size:13px}
+.loader .prog{height:6px}
+.toast{position:fixed;left:50%;transform:translateX(-50%);z-index:70;background:var(--ink);color:var(--surface);padding:10px 14px;border-radius:10px;font-size:13px;box-shadow:var(--shadow);max-width:calc(100vw - 32px);text-align:center}
+@media (prefers-reduced-motion: reduce){.sheet{transition:none}}
+
+/* v3: 장(챕터) 탭, 초기화 버튼, 흐름 변화 재생기 */
+.tabs{display:flex;gap:0;overflow-x:auto;scrollbar-width:none;margin:8px -16px 0;border-bottom:1px solid var(--rule);padding:0 10px}
+.tabs::-webkit-scrollbar{display:none}
+.tabs button{flex:none;border:0;background:transparent;padding:9px 11px 8px;font-size:13.5px;color:var(--muted);border-bottom:3px solid transparent;cursor:pointer;white-space:nowrap}
+.tabs button.on{color:var(--accent);border-bottom-color:var(--accent);font-weight:700}
+.tabs button:disabled{opacity:.35;cursor:default}
+.tabs button .n{display:inline-block;min-width:16px;padding:0 4px;margin-left:4px;border-radius:8px;background:var(--accent);color:#fff;font-size:11px;line-height:16px;text-align:center}
+.iconbtn.reset{color:var(--cut);border-color:#d9a0a6}
+.card{border:1px solid var(--rule);border-radius:3px;margin:10px 0;overflow:hidden}
+.card .hd{display:flex;align-items:center;gap:8px;padding:8px 10px;background:#f6f6f6;border-bottom:1px solid var(--rule)}
+.card .hd b{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.card .kv{margin:0}
+.player{display:flex;flex-direction:column;gap:8px;margin:10px 0}
+.steps{display:flex;gap:0;border:1px solid #b8b8b8;border-radius:3px;overflow:hidden}
+.steps button{flex:1;border:0;background:#fff;padding:9px 6px;font-size:13px;cursor:pointer;line-height:1.25}
+.steps button+button{border-left:1px solid #b8b8b8}
+.steps button.on{background:var(--accent);color:#fff}
+.steps button small{display:block;font-size:11px;opacity:.8}
+.banner{position:fixed;left:50%;transform:translateX(-50%);z-index:26;background:rgba(20,20,20,.86);color:#fff;padding:8px 14px;border-radius:4px;font-size:14px;font-weight:700;box-shadow:var(--shadow);text-align:center;max-width:calc(100vw - 32px)}
+.banner small{display:block;font-weight:400;font-size:12px;opacity:.85}
+.lg-inline{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:12px;color:var(--muted)}
+.lg-inline span{display:inline-flex;align-items:center;gap:5px}
+.lg-inline i{display:inline-block;width:18px;height:4px;border-radius:2px}
+.hint{font-size:12.5px;color:var(--muted);margin:6px 0}
+
+.iconbtn.gps-on{color:#fff;background:#1a73e8;border-color:#1a73e8}.iconbtn.gps-wait{color:#1a73e8}
+.bigstat{display:flex;align-items:baseline;gap:6px;margin:4px 0 10px}.bigstat span{font-size:13px;color:var(--muted)}.bigstat b{font-size:28px;font-weight:800;font-variant-numeric:tabular-nums}.bigstat em{font-style:normal;font-size:14px;color:var(--muted)}
+.opcard{border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin:8px 0;background:var(--surface)}
+.ophead{font-size:12px;font-weight:700;color:var(--muted);margin-bottom:6px}
+.opstep{display:flex;align-items:center;gap:8px;padding:7px 0;border-top:1px solid var(--line)}.opstep:first-of-type{border-top:0}
+.opstep .no{width:20px;height:20px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;flex:none}
+.opstep.x .no{background:#d92b2b}.opstep.o .no{background:#14995a}
+.opstep .act{font-weight:800;font-size:14px;flex:none;min-width:30px}.opstep.x .act{color:#d92b2b}.opstep.o .act{color:#14995a}
+.opstep .nm{flex:1;min-width:0;display:flex;flex-direction:column}.opstep .nm b{font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.opstep .nm small{font-size:11.5px;color:var(--muted)}
+.opres{margin-top:8px;padding-top:8px;border-top:1px dashed var(--line);font-size:13.5px}.opres b{font-size:16px}.opres small{color:var(--muted)}
+.btn.mini{padding:3px 9px;font-size:12px;min-height:0;flex:none}
+details.alt{margin:10px 0}details.alt summary{cursor:pointer;font-size:13px;color:var(--accent);padding:6px 0}
+tr.sel td{background:rgba(20,153,90,.08)}
+
+.here{pointer-events:none;align-self:flex-start;max-width:min(560px,calc(100vw - 24px));margin-left:max(0px,calc((100vw - 24px - 560px)/2));background:rgba(255,255,255,.88);border:1px solid rgba(0,0,0,.12);border-radius:6px;padding:5px 9px;box-shadow:0 1px 4px rgba(0,0,0,.12);display:flex;flex-direction:column;gap:1px}
+.here b{font-size:14px;font-weight:800;color:#1b1b1b;letter-spacing:-.2px}.here b small{font-weight:500;color:#555;font-size:12px;margin-left:5px}
+.here span{font-size:11.5px;color:#1f5fbf;line-height:1.35}.here span:empty{display:none}
+.ailog{display:flex;flex-direction:column;gap:6px;margin:4px 0 8px}
+.msg{max-width:92%;padding:8px 10px;border-radius:10px;font-size:13.5px;line-height:1.5;word-break:keep-all;overflow-wrap:anywhere}
+.msg.u{align-self:flex-end;background:#1f5fbf;color:#fff;border-bottom-right-radius:3px}
+.msg.a{align-self:flex-start;background:var(--surface2,#f1f1f1);border:1px solid var(--line);border-bottom-left-radius:3px}
+.msg.t{align-self:flex-start;font-size:11.5px;color:var(--muted);padding:0 4px}
+.aictx{font-size:12.5px;color:var(--muted);margin:6px 0 4px}.aictx b{color:#7b2cbf}
+.aiin{display:flex;gap:6px;align-items:stretch;margin:4px 0}.aiin textarea{flex:1;min-width:0;font:inherit;font-size:15px;padding:8px 10px;border:1px solid #bdbdbd;border-radius:6px;resize:none}
+.aiin .btn{flex:none}
+.aiex{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}.aiex .btn.mini{white-space:normal;text-align:left;height:auto;padding:6px 9px}
+</style>
+
+<canvas id="map" aria-label="관망도"></canvas>
+
+<div class="top">
+  <div class="searchrow">
+    <div class="search">
+      <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg>
+      <input id="q" type="search" placeholder="주소(송정동 466-5), 시설명, 소블록, 관로ID" autocomplete="off" enterkeyhint="search">
+    </div>
+    <button class="iconbtn" id="btnGps" title="내 위치" aria-label="내 위치"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/><circle cx="12" cy="12" r="8"/></svg></button>
+    <button class="iconbtn" id="btnFit" title="전체 보기" aria-label="전체 보기"><svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
+    <button class="iconbtn reset" id="btnReset" title="모두 지우기 (Esc)" aria-label="선택·작업 모두 지우기"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" style="stroke-width:2.4"/></svg></button>
+  </div>
+  <div class="results" id="results" hidden></div>
+  <div class="chips" id="chips">
+    <label class="chip" title="기준 시각"><svg viewBox="0 0 24 24" width="14" height="14" style="stroke:currentColor;fill:none;stroke-width:2"><circle cx="12" cy="12" r="8.5"/><path d="M12 7v5l3 2"/></svg><select id="hour" aria-label="기준 시각"></select></label>
+    <button class="chip" id="chipSim"><svg viewBox="0 0 24 24" width="14" height="14" style="stroke:currentColor;fill:none;stroke-width:2"><path d="M4 12h5M15 12h5M9 8v8M15 8v8"/></svg>단수 시뮬레이션</button>
+    <button class="chip" id="chipEngine" title="수리계산 엔진 상태"><span class="dot" id="engDot"></span><span id="engTxt">엔진 대기</span></button>
+    <button class="chip" id="chipLayers">표시</button>
+  </div>
+  <div class="here" id="here" hidden><b id="hereT"></b><span id="hereF"></span></div>
+</div>
+
+<div class="legend" id="legend" hidden></div>
+<div class="ctx" id="ctx" hidden></div>
+<div class="banner" id="banner" hidden></div>
+<div class="editbar" id="editbar" hidden><span id="editTxt">지도에서 관로·밸브를 눌러 차단/개방</span><button id="editDone">완료</button></div>
+
+<section class="sheet" id="sheet" aria-live="polite">
+  <div class="grab" id="grab"><i></i>
+    <div class="sh-head"><div class="sh-title"><h2 id="shTitle"></h2><p id="shSub"></p></div>
+      <button class="xbtn" id="shClose" aria-label="접기"><svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button></div>
+    <nav class="tabs" id="tabs" aria-label="분석 장"></nav>
+  </div>
+  <div class="sh-body" id="shBody"></div>
+</section>
+
+<div class="loader" id="loader"><div class="box">
+  <h1>광주 관망 모바일</h1>
+  <p id="ldTxt">관망 자료 불러오는 중…</p>
+  <div class="prog"><i id="ldBar"></i></div>
+  <p class="num" id="ldSub">EPSG:5186 · 광주시 수리검토 관망(현재기준)</p>
+</div></div>
+<div class="toast" id="toast" hidden></div>
+<script>
+"use strict";
+/* ============ utilities ============ */
+const $=s=>document.querySelector(s);
+const fmt=(v,d=0)=>v==null||isNaN(v)?"–":Number(v).toLocaleString("ko-KR",{maximumFractionDigits:d,minimumFractionDigits:d});
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const css=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const hh2=h=>String(h).padStart(2,"0");
+let toastT=0;
+function toast(msg,ms=2600){const t=$("#toast");t.textContent=msg;t.hidden=false;t.style.bottom=`calc(${sheetH()+16}px + env(safe-area-inset-bottom,0px))`;clearTimeout(toastT);toastT=setTimeout(()=>t.hidden=true,ms);}
+function store(k,v){try{if(v===undefined)return JSON.parse(localStorage.getItem("gjnet."+k));localStorage.setItem("gjnet."+k,JSON.stringify(v));}catch(e){return null}}
+async function fetchGz(url,onProg){
+  const res=await fetch(url); if(!res.ok) throw new Error(url+" 응답 "+res.status);
+  const total=+res.headers.get("content-length")||0; let got=0;const chunks=[];const rd=res.body.getReader();
+  for(;;){const {done,value}=await rd.read();if(done)break;chunks.push(value);got+=value.byteLength;onProg&&onProg(got,total);}
+  let buf=new Uint8Array(got);let o=0;for(const c of chunks){buf.set(c,o);o+=c.byteLength;}
+  if(/\.txt$/.test(url)){const bin=atob(new TextDecoder().decode(buf).trim());buf=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)buf[i]=bin.charCodeAt(i);}
+  if(buf[0]!==0x1f||buf[1]!==0x8b) return buf.buffer;
+  return new Response(new Blob([buf]).stream().pipeThrough(new DecompressionStream("gzip"))).arrayBuffer();
+}
+/* EPSG:5186 */
+const TM=(()=>{const a=6378137,f=1/298.257222101,e2=f*(2-f),ep2=e2/(1-e2),k0=1,lat0=38*Math.PI/180,lon0=127*Math.PI/180,FE=200000,FN=600000;
+  const e4=e2*e2,e6=e4*e2;
+  const M=p=>a*((1-e2/4-3*e4/64-5*e6/256)*p-(3*e2/8+3*e4/32+45*e6/1024)*Math.sin(2*p)+(15*e4/256+45*e6/1024)*Math.sin(4*p)-(35*e6/3072)*Math.sin(6*p));
+  const M0=M(lat0);
+  function fwd(lat,lon){const p=lat*Math.PI/180,l=lon*Math.PI/180,s=Math.sin(p),c=Math.cos(p),t=Math.tan(p);
+    const N=a/Math.sqrt(1-e2*s*s),T=t*t,C=ep2*c*c,A=(l-lon0)*c;
+    const x=FE+k0*N*(A+(1-T+C)*A**3/6+(5-18*T+T*T+72*C-58*ep2)*A**5/120);
+    const y=FN+k0*(M(p)-M0+N*t*(A*A/2+(5-T+9*C+4*C*C)*A**4/24+(61-58*T+T*T+600*C-330*ep2)*A**6/720));return [x,y];}
+  function inv(x,y){const m=M0+(y-FN)/k0,mu=m/(a*(1-e2/4-3*e4/64-5*e6/256)),e1=(1-Math.sqrt(1-e2))/(1+Math.sqrt(1-e2));
+    const p1=mu+(3*e1/2-27*e1**3/32)*Math.sin(2*mu)+(21*e1*e1/16-55*e1**4/32)*Math.sin(4*mu)+(151*e1**3/96)*Math.sin(6*mu)+(1097*e1**4/512)*Math.sin(8*mu);
+    const s=Math.sin(p1),c=Math.cos(p1),t=Math.tan(p1),C1=ep2*c*c,T1=t*t,N1=a/Math.sqrt(1-e2*s*s),R1=a*(1-e2)/Math.pow(1-e2*s*s,1.5),D=(x-FE)/(N1*k0);
+    const lat=p1-(N1*t/R1)*(D*D/2-(5+3*T1+10*C1-4*C1*C1-9*ep2)*D**4/24+(61+90*T1+298*C1+45*T1*T1-252*ep2-3*C1*C1)*D**6/720);
+    const lon=lon0+(D-(1+2*T1+C1)*D**3/6+(5-2*C1+28*T1-3*C1*C1+8*ep2+24*T1*T1)*D**5/120)/c;return [lat*180/Math.PI,lon*180/Math.PI];}
+  return {fwd,inv};})();
+
+/* ============ data ============ */
+let NET,NN,NL,X,Y,NT,DMA,LT,N1,N2,DIA,INIT,LEN,GPTS,GOFF,HQ,HP,HD,H=24;
+let ADJ,ADJS,RES=[],resIdx,DMACEN=[],BOUNDS,DONGS=[];
+const linkName=l=>{const c=NET.links.c[l];const t=LT[l];
+  if(t===2) return c||("가압장 "+NET.links.id[l]);
+  if(t===3) return c&&c!=="감압밸브"?c.replace(/^\(감압\)/,"")+" 감압":"감압밸브 "+NET.links.id[l];
+  if(t===7) return (c||"경계밸브")+" "+NET.links.id[l];
+  return (INIT[l]===0?"폐쇄관로 ":"관로 ")+NET.links.id[l];};
+const linkKind=l=>{const t=LT[l];if(t===2)return "가압장";if(t===3)return "감압밸브";if(t===7)return "경계밸브";if(t===0)return "역지밸브";return INIT[l]===0?"폐쇄관로":"관로";};
+const resKind=i=>/정수/.test(NET.nodes.id[i])?"정수장":"배수지";
+const resName=i=>{const s=NET.nodes.id[i];return /정수$/.test(s)?"광주"+s+"장":s;};
+const qd=v=>v>0?Math.expm1(v/2000):v<0?-Math.expm1(-v/2000):0;
+const Qh=(h,l)=>qd(HQ[h*NL+l]); const Ph=(h,i)=>HP[h*NN+i]/10; const Dh=(h,i)=>qd(HD[h*NN+i]);
+function flowDir(l,h){const v=HQ[h*NL+l];return v>=20?1:v<=-20?-1:0;}
+const SRC_COL=["#0b84c6","#e4572e","#2a9d8f","#9b5de5","#f2a541","#d62f8a","#5c8001","#3a5a98","#c17c74","#00a6a6","#8d6a9f","#b07d00","#4f772d"];
+function hueCol(i,alpha=1){const g=(i*137.508)%360;return `hsla(${g.toFixed(0)},68%,46%,${alpha})`;}
+const SELC="#00a0ff";const FF='"Malgun Gothic","맑은 고딕","Noto Sans KR","Apple SD Gothic Neo",system-ui,sans-serif';
+
+async function loadAll(){
+  const bar=$("#ldBar"),txt=$("#ldTxt");let p1=0,p2=0;const upd=()=>{bar.style.width=Math.min(100,(p1*0.35+p2*0.65)*100).toFixed(0)+"%";};
+  const [netBuf,hydBuf]=await Promise.all([fetchGz("net.json.gz.txt",(g,t)=>{p1=t?g/t:0.5;upd();}),fetchGz("hyd.bin.gz.txt",(g,t)=>{p2=t?g/t:0.5;upd();})]);
+  txt.textContent="관망 구성 중…";await new Promise(r=>setTimeout(r,20));
+  NET=JSON.parse(new TextDecoder().decode(netBuf));
+  const n=NET.nodes,l=NET.links;NN=n.id.length;NL=l.id.length;
+  X=new Float64Array(NN);Y=new Float64Array(NN);for(let i=0;i<NN;i++){X[i]=n.x[i]/10;Y[i]=n.y[i]/10;}
+  NT=Int8Array.from(n.t);DMA=Int16Array.from(n.dma);LT=Int8Array.from(l.t);N1=Int32Array.from(l.n1);N2=Int32Array.from(l.n2);DIA=Float32Array.from(l.dia);INIT=Int8Array.from(l.init);LEN=Float32Array.from(l.len);
+  let tot=0;for(let i=0;i<NL;i++)tot+=2+(l.voff[i+1]-l.voff[i]);
+  GPTS=new Float32Array(tot*2);GOFF=new Int32Array(NL+1);let k=0;
+  for(let i=0;i<NL;i++){GOFF[i]=k;GPTS[k*2]=X[N1[i]];GPTS[k*2+1]=Y[N1[i]];k++;
+    for(let j=l.voff[i];j<l.voff[i+1];j++){GPTS[k*2]=l.vx[j]/10;GPTS[k*2+1]=l.vy[j]/10;k++;}
+    GPTS[k*2]=X[N2[i]];GPTS[k*2+1]=Y[N2[i]];k++;}
+  GOFF[NL]=k;
+  ADJS=new Int32Array(NN+1);for(let i=0;i<NL;i++){ADJS[N1[i]+1]++;ADJS[N2[i]+1]++;}
+  for(let i=0;i<NN;i++)ADJS[i+1]+=ADJS[i];ADJ=new Int32Array(ADJS[NN]);const pos=ADJS.slice(0,NN);
+  for(let i=0;i<NL;i++){ADJ[pos[N1[i]]++]=i;ADJ[pos[N2[i]]++]=i;}
+  HQ=new Int16Array(hydBuf,0,H*NL);HP=new Int16Array(hydBuf,H*NL*2,H*NN);HD=new Int16Array(hydBuf,H*NL*2+H*NN*2,H*NN);
+  resIdx=new Int16Array(NN).fill(-1);for(let i=0;i<NN;i++)if(NT[i]===1){resIdx[i]=RES.length;RES.push(i);}
+  const dn=NET.dmas.length,sx=new Float64Array(dn),sy=new Float64Array(dn),sc=new Int32Array(dn);
+  for(let i=0;i<NN;i++){const d=DMA[i];sx[d]+=X[i];sy[d]+=Y[i];sc[d]++;}
+  for(let d=0;d<dn;d++)DMACEN.push(sc[d]?[sx[d]/sc[d],sy[d]/sc[d],sc[d]]:null);
+  let x0=1e18,y0=1e18,x1=-1e18,y1=-1e18;for(let i=0;i<NN;i++){if(X[i]<x0)x0=X[i];if(X[i]>x1)x1=X[i];if(Y[i]<y0)y0=Y[i];if(Y[i]>y1)y1=Y[i];}
+  BOUNDS={x0,y0,x1,y1};
+  const ox=NET.meta.x0,oy=NET.meta.y0;
+  for(const d of NET.dongs){const polys=d.p.map(r=>{const a=new Float32Array(r.length*2);r.forEach((c,i)=>{const [x,y]=TM.fwd(c[1],c[0]);a[i*2]=x-ox;a[i*2+1]=y-oy;});return a;});
+    let cx=0,cy=0,cn=0,best=polys[0];for(const p of polys)if(p.length>best.length)best=p;for(let i=0;i<best.length;i+=2){cx+=best[i];cy+=best[i+1];cn++;}
+    DONGS.push({n:d.n,polys,cx:cx/cn,cy:cy/cn});}
+  buildGrid();buildSearch();
+}
+const toLocal=(lat,lon)=>{const [x,y]=TM.fwd(lat,lon);return [x-NET.meta.x0,y-NET.meta.y0];};
+const toLatLon=(x,y)=>TM.inv(x+NET.meta.x0,y+NET.meta.y0);
+
+/* ============ basemap (OpenStreetMap) ============ */
+let BM=null;
+async function loadBasemap(){try{const buf=await fetchGz("osm.json.gz.txt");const d=JSON.parse(new TextDecoder().decode(buf));
+  const dec=L=>{const feats=[];if(!L)return feats;const o=L.o,dd=L.d;let k=0;for(let f=0;f<o.length;f++){const n=o[f];const a=new Float32Array(n*2);let x=0,y=0,a0=1e18,b0=1e18,a1=-1e18,b1=-1e18;
+      for(let i=0;i<n;i++){x+=dd[k++];y+=dd[k++];a[i*2]=x;a[i*2+1]=y;if(x<a0)a0=x;if(x>a1)a1=x;if(y<b0)b0=y;if(y>b1)b1=y;}feats.push({p:a,b:[a0,b0,a1,b1]});}return feats;};
+  BM={poly:{},line:{},road:{},rname:d.rname||[],place:d.place||[],poi:d.poi||[],pname:d.pname||[]};
+  for(const k in d.poly)BM.poly[k]=dec(d.poly[k]);for(const k in d.line)BM.line[k]=dec(d.line[k]);for(const k in d.road)BM.road[k]=dec(d.road[k]);
+  if(d.addr)addAddrPoints(d.addr);
+  baseDirty=true;}catch(e){console.warn("배경지도",e);}}
+const BMS={ // Kakao 지도 느낌의 색
+  land:"#f2efe9",water:"#a9d3ef",waterLine:"#8fc3e8",park:"#d4e8c4",forest:"#dcebd0",golf:"#cbe5b8",rail:"#9a9a9a",
+  road:{mw:["#f39b4a","#d8813a",22,2.6],tr:["#ffc27a","#e19b4c",18,2.2],pr:["#ffe28a","#dbb75a",15,1.9],se:["#ffffff","#c8c0b2",12,1.6],te:["#ffffff","#cdc6ba",10,1.3],mi:["#ffffff","#d7d1c6",6,0.8]}};
+function drawBasemap(C,x0,y0,x1,y1){if(!BM||!layers.base)return;const s=view.s,cx=view.cx,cy=view.cy,hw=VP.w/2,hh=VP.h/2;
+  const inV=b=>!(b[2]<x0||b[0]>x1||b[3]<y0||b[1]>y1);const minPx=0.6/s;
+  const path=(feats,close,minSize)=>{C.beginPath();for(const f of feats){if(!inV(f.b))continue;if(minSize&&(f.b[2]-f.b[0])<minSize&&(f.b[3]-f.b[1])<minSize)continue;const p=f.p;
+      C.moveTo((p[0]-cx)*s+hw,hh-(p[1]-cy)*s);let lx=p[0],ly=p[1];for(let i=2;i<p.length;i+=2){const x=p[i],y=p[i+1];if(Math.abs(x-lx)<minPx&&Math.abs(y-ly)<minPx&&i<p.length-2)continue;C.lineTo((x-cx)*s+hw,hh-(y-cy)*s);lx=x;ly=y;}if(close)C.closePath();}};
+  const ms=3/s;
+  C.fillStyle=BMS.forest;path(BM.poly.forest||[],true,ms);C.fill();
+  C.fillStyle=BMS.park;path(BM.poly.park||[],true,ms);C.fill();
+  C.fillStyle=BMS.golf;path(BM.poly.golf||[],true,ms);C.fill();
+  C.fillStyle=BMS.water;path(BM.poly.water||[],true,ms);C.fill("evenodd");
+  C.lineCap="round";C.lineJoin="round";
+  C.strokeStyle=BMS.waterLine;C.lineWidth=Math.max(1.6,40*s);path(BM.line.river||[],false);C.stroke();
+  if(s>0.02){C.lineWidth=Math.max(1,6*s);path(BM.line.stream||[],false);C.stroke();}
+  if(s>0.01){C.strokeStyle=BMS.rail;C.lineWidth=Math.max(1.4,4*s);C.setLineDash([6,5]);path(BM.line.rail||[],false);C.stroke();C.setLineDash([]);}
+  const order=["mi","te","se","pr","tr","mw"];const show={mi:s>0.05,te:s>0.015,se:true,pr:true,tr:true,mw:true};
+  // casing
+  for(const k of order){if(!show[k]||!BM.road[k])continue;const st=BMS.road[k];const w=Math.max(st[3],st[2]*s);C.strokeStyle=st[1];C.lineWidth=w+(s>0.15?2:1);path(BM.road[k],false);C.stroke();}
+  for(const k of order){if(!show[k]||!BM.road[k])continue;const st=BMS.road[k];const w=Math.max(st[3],st[2]*s);C.strokeStyle=st[0];C.lineWidth=w;path(BM.road[k],false);C.stroke();}
+}
+function drawBasemapLabels(C,x0,y0,x1,y1){if(!BM||!layers.base)return;const s=view.s;C.save();C.textAlign="center";C.textBaseline="middle";
+  const sc=(x,y)=>[(x-view.cx)*s+VP.w/2,VP.h/2-(y-view.cy)*s];const placed=[];const free=(x,y,w,h)=>{for(const r of placed)if(Math.abs(r[0]-x)<(r[2]+w)/2&&Math.abs(r[1]-y)<(r[3]+h)/2)return false;placed.push([x,y,w,h]);return true;};
+  const halo=(t,x,y,col,font)=>{C.font=font;const w=C.measureText(t).width;if(!free(x,y,w+6,16))return;C.lineWidth=3.5;C.strokeStyle="rgba(255,255,255,.92)";C.strokeText(t,x,y);C.fillStyle=col;C.fillText(t,x,y);};
+  if(s>0.12){for(const r of BM.rname){const [x,y,ang,name,cls]=r;if(x<x0||x>x1||y<y0||y>y1)continue;if(cls>=4&&s<0.35)continue;const [a,b]=sc(x,y);
+      C.save();C.translate(a,b);let an=-ang;if(an>Math.PI/2)an-=Math.PI;if(an<-Math.PI/2)an+=Math.PI;C.rotate(an);C.font=`500 11px ${FF}`;const w=C.measureText(name).width;
+      if(free(a,b,Math.abs(Math.cos(an))*w+14,Math.abs(Math.sin(an))*w+14)){C.lineWidth=3;C.strokeStyle="rgba(255,255,255,.95)";C.strokeText(name,0,0);C.fillStyle="#6b5a3d";C.fillText(name,0,0);}C.restore();}}
+  for(const p of BM.place){const [x,y,name,rank]=p;if(x<x0||x>x1||y<y0||y>y1)continue;if(rank<=1&&s<0.03)continue;if(rank===0&&s<0.12)continue;const [a,b]=sc(x,y);halo(name,a,b,"#55524c",`${rank>=2?700:500} ${rank>=2?13:11.5}px ${FF}`);}
+  if(s>0.3)for(const p of BM.poi){const [x,y,name]=p;if(x<x0||x>x1||y<y0||y>y1)continue;const [a,b]=sc(x,y);halo(name,a,b,"#3a6a9c",`500 11px ${FF}`);}
+  C.restore();}
+
+/* ============ spatial grid ============ */
+const CELL=300;let GX0,GY0,GW,GH,GRID,GRIDN;
+function buildGrid(){GX0=BOUNDS.x0-10;GY0=BOUNDS.y0-10;GW=Math.ceil((BOUNDS.x1-GX0+20)/CELL);GH=Math.ceil((BOUNDS.y1-GY0+20)/CELL);
+  const cells=Array.from({length:GW*GH},()=>[]);
+  for(let l=0;l<NL;l++){let a=1e18,b=1e18,c=-1e18,d=-1e18;for(let k=GOFF[l];k<GOFF[l+1];k++){const x=GPTS[k*2],y=GPTS[k*2+1];if(x<a)a=x;if(x>c)c=x;if(y<b)b=y;if(y>d)d=y;}
+    const i0=Math.max(0,Math.floor((a-GX0)/CELL)),i1=Math.min(GW-1,Math.floor((c-GX0)/CELL)),j0=Math.max(0,Math.floor((b-GY0)/CELL)),j1=Math.min(GH-1,Math.floor((d-GY0)/CELL));
+    for(let j=j0;j<=j1;j++)for(let i=i0;i<=i1;i++)cells[j*GW+i].push(l);}
+  GRID=cells.map(c=>Int32Array.from(c));
+  const nc=Array.from({length:GW*GH},()=>[]);for(let i=0;i<NN;i++){const ci=Math.floor((X[i]-GX0)/CELL),cj=Math.floor((Y[i]-GY0)/CELL);if(ci>=0&&cj>=0&&ci<GW&&cj<GH)nc[cj*GW+ci].push(i);}
+  GRIDN=nc.map(c=>Int32Array.from(c));}
+let stamp=new Int32Array(0),stampV=1;
+function linksIn(x0,y0,x1,y1){if(stamp.length!==NL)stamp=new Int32Array(NL);stampV++;const out=[];
+  const i0=Math.max(0,Math.floor((x0-GX0)/CELL)),i1=Math.min(GW-1,Math.floor((x1-GX0)/CELL)),j0=Math.max(0,Math.floor((y0-GY0)/CELL)),j1=Math.min(GH-1,Math.floor((y1-GY0)/CELL));
+  for(let j=j0;j<=j1;j++)for(let i=i0;i<=i1;i++){const c=GRID[j*GW+i];for(let k=0;k<c.length;k++){const l=c[k];if(stamp[l]!==stampV){stamp[l]=stampV;out.push(l);}}}return out;}
+function nearestNode(x,y,maxD){let best=-1,bd=maxD*maxD;const r=Math.ceil(maxD/CELL);const ci=Math.floor((x-GX0)/CELL),cj=Math.floor((y-GY0)/CELL);
+  for(let j=cj-r;j<=cj+r;j++)for(let i=ci-r;i<=ci+r;i++){if(i<0||j<0||i>=GW||j>=GH)continue;const c=GRIDN[j*GW+i];for(let k=0;k<c.length;k++){const n=c[k];const d=(X[n]-x)**2+(Y[n]-y)**2;if(d<bd){bd=d;best=n;}}}return best;}
+function nearestLink(x,y,maxD){let best=-1,bd=maxD;for(const l of linksIn(x-maxD,y-maxD,x+maxD,y+maxD)){for(let k=GOFF[l];k<GOFF[l+1]-1;k++){const ax=GPTS[k*2],ay=GPTS[k*2+1],bx=GPTS[k*2+2],by=GPTS[k*2+3];
+  const dx=bx-ax,dy=by-ay,L2=dx*dx+dy*dy;let t=L2?((x-ax)*dx+(y-ay)*dy)/L2:0;t=Math.max(0,Math.min(1,t));const d=Math.hypot(ax+t*dx-x,ay+t*dy-y);if(d<bd){bd=d;best=l;}}}return best;}
+function linkMid(l){const k0=GOFF[l],k1=GOFF[l+1];let tot=0;for(let k=k0;k<k1-1;k++)tot+=Math.hypot(GPTS[k*2+2]-GPTS[k*2],GPTS[k*2+3]-GPTS[k*2+1]);let half=tot/2;
+  for(let k=k0;k<k1-1;k++){const s=Math.hypot(GPTS[k*2+2]-GPTS[k*2],GPTS[k*2+3]-GPTS[k*2+1]);if(half<=s){const t=s?half/s:0;return [GPTS[k*2]+(GPTS[k*2+2]-GPTS[k*2])*t,GPTS[k*2+1]+(GPTS[k*2+3]-GPTS[k*2+1])*t,Math.atan2(GPTS[k*2+3]-GPTS[k*2+1],GPTS[k*2+2]-GPTS[k*2])];}half-=s;}return [GPTS[k0*2],GPTS[k0*2+1],0];}
+
+/* ============ view & render ============ */
+const cv=$("#map"),ctx=cv.getContext("2d");let W=0,Hh=0,DPR=1;
+const view={cx:0,cy:0,s:0.02};let interacting=false;
+let layers=Object.assign({meters:false,base:true,dong:true,facil:true,labels:true,valves:true,nodes:true},store("layers")||{});
+let OV=null;   // 분석 결과 오버레이 {links:Map(l->{c,w,dash}), nodes:Map, pins:[], meters:Map, marks:[]}
+let FLOW=null; // 흐름 변화 애니메이션
+let needDraw=true,baseDirty=true;const bc=document.createElement("canvas"),bctx=bc.getContext("2d");let bView="";
+function resize(){DPR=Math.min(2,window.devicePixelRatio||1);W=innerWidth;Hh=innerHeight;cv.width=W*DPR;cv.height=Hh*DPR;cv.style.width=W+"px";cv.style.height=Hh+"px";bc.width=W*DPR;bc.height=Hh*DPR;VP={ox:0,oy:0,w:W,h:Hh};baseDirty=true;needDraw=true;}
+const sx=x=>(x-view.cx)*view.s+VP.w/2, sy=y=>VP.h/2-(y-view.cy)*view.s;
+const wx=px=>(px-VP.ox-VP.w/2)/view.s+view.cx, wy=py=>view.cy-(py-VP.oy-VP.h/2)/view.s;
+let VP={ox:0,oy:0,w:0,h:0};let SPLIT=null;
+function redraw(){baseDirty=true;needDraw=true;}
+function fit(x0,y0,x1,y1,pad=40){const top=120,bot=sheetH()+20;const aw=W-pad*2,ah=Math.max(120,Hh-top-bot-pad);
+  view.s=Math.min(aw/Math.max(30,x1-x0),ah/Math.max(30,y1-y0));view.s=Math.min(view.s,4);view.cx=(x0+x1)/2;view.cy=(y0+y1)/2+((top-bot)/2)/view.s;redraw();}
+function fitAll(){fit(BOUNDS.x0,BOUNDS.y0,BOUNDS.x1,BOUNDS.y1,16);}
+function fitNodes(arr,pad){let a=1e18,b=1e18,c=-1e18,d=-1e18;for(const i of arr){if(X[i]<a)a=X[i];if(X[i]>c)c=X[i];if(Y[i]<b)b=Y[i];if(Y[i]>d)d=Y[i];}if(a<1e17)fit(a,b,c,d,pad||50);}
+function widthFor(d,s){return s>0.5?1.4:s>0.15?1.1:0.9;}
+const pathLinks=(C,arr)=>{const s=view.s,cx=view.cx,cy=view.cy,hw=VP.w/2,hh=VP.h/2;C.beginPath();for(const l of arr){const k0=GOFF[l],k1=GOFF[l+1];C.moveTo((GPTS[k0*2]-cx)*s+hw,hh-(GPTS[k0*2+1]-cy)*s);for(let k=k0+1;k<k1;k++)C.lineTo((GPTS[k*2]-cx)*s+hw,hh-(GPTS[k*2+1]-cy)*s);}};
+
+function drawTags(C,tags){const s=view.s;C.textAlign="left";C.textBaseline="middle";C.font=`700 11px ${FF}`;
+  for(const g of tags){const X_=sx(g.x),Y_=sy(g.y);if(X_<-40||Y_<-20||X_>VP.w+40||Y_>VP.h+20)continue;const red=g.kind==="x",col=red?"#d92b2b":g.kind==="o"?"#14995a":(g.c||"#7b2cbf");
+    C.fillStyle="#fff";C.strokeStyle=col;C.lineWidth=1.6;C.beginPath();C.arc(X_,Y_,5.5,0,6.283);C.fill();C.stroke();
+    if(red){C.beginPath();C.moveTo(X_-2.6,Y_-2.6);C.lineTo(X_+2.6,Y_+2.6);C.moveTo(X_+2.6,Y_-2.6);C.lineTo(X_-2.6,Y_+2.6);C.stroke();}else{C.fillStyle=col;C.beginPath();C.arc(X_,Y_,2.8,0,6.283);C.fill();}
+    if(g.text){const w=C.measureText(g.text).width+8;C.fillStyle=col;C.globalAlpha=.92;C.beginPath();C.roundRect?C.roundRect(X_+8,Y_-7,w,14,7):C.rect(X_+8,Y_-7,w,14);C.fill();C.globalAlpha=1;C.fillStyle="#fff";C.fillText(g.text,X_+12,Y_+0.5);}}
+  C.textAlign="center";}
+function drawBase(C){ // 정적인 모든 것: 배경지도, 관망, 결과 오버레이, 시설
+  C.save();C.setTransform(DPR,0,0,DPR,VP.ox*DPR,VP.oy*DPR);C.beginPath();C.rect(0,0,VP.w,VP.h);C.clip();C.fillStyle=BM&&layers.base?BMS.land:css("--ground");C.fillRect(0,0,VP.w,VP.h);
+  const s=view.s,cx=view.cx,cy=view.cy,hw=VP.w/2,hh=VP.h/2;const x0=cx-(hw+20)/s,x1=cx+(hw+20)/s,y0=cy-(hh+20)/s,y1=cy+(hh+20)/s;
+  drawBasemap(C,x0,y0,x1,y1);
+  if(layers.dong){C.strokeStyle=BM&&layers.base?"rgba(140,120,160,.55)":css("--dong");C.lineWidth=1.2;C.setLineDash([6,4]);C.beginPath();
+    for(const d of DONGS)for(const p of d.polys){for(let i=0;i<p.length;i+=2){const X_=(p[i]-cx)*s+hw,Y_=hh-(p[i+1]-cy)*s;i?C.lineTo(X_,Y_):C.moveTo(X_,Y_);}}C.stroke();C.setLineDash([]);}
+  const vis=linksIn(x0,y0,x1,y1);const skipSmall=interacting&&vis.length>9000;
+  const buckets=[[],[],[],[]],closedL=[];
+  for(const l of vis){const d=DIA[l];if(skipSmall&&d<150&&!(OV&&OV.links.has(l)))continue;if(INIT[l]===0){closedL.push(l);continue;}buckets[d>=600?3:d>=300?2:d>=150?1:0].push(l);}
+  C.lineCap="round";C.lineJoin="round";const pc=css("--pipe");
+  for(let b=0;b<4;b++){if(!buckets[b].length)continue;C.strokeStyle=pc;C.lineWidth=widthFor([100,200,400,700][b],s);pathLinks(C,buckets[b]);C.stroke();}
+  if(closedL.length){C.strokeStyle=pc;C.lineWidth=1;C.setLineDash([3,3]);pathLinks(C,closedL);C.stroke();C.setLineDash([]);}
+  if(layers.nodes&&s>0.05){const i0=Math.max(0,Math.floor((x0-GX0)/CELL)),i1=Math.min(GW-1,Math.floor((x1-GX0)/CELL)),j0=Math.max(0,Math.floor((y0-GY0)/CELL)),j1=Math.min(GH-1,Math.floor((y1-GY0)/CELL));
+    const r=s>0.6?2:s>0.2?1.5:1.1;let cnt=0;C.fillStyle=pc;C.beginPath();
+    outer:for(let j=j0;j<=j1;j++)for(let i=i0;i<=i1;i++){const c=GRIDN[j*GW+i];for(let k=0;k<c.length;k++){const n=c[k];if(NT[n]!==0)continue;const X_=(X[n]-cx)*s+hw,Y_=hh-(Y[n]-cy)*s;C.moveTo(X_+r,Y_);C.arc(X_,Y_,r,0,6.283);if(++cnt>40000)break outer;}}
+    if(!(interacting&&cnt>9000))C.fill();}
+  // 결과 오버레이
+  if(OV&&!(FLOW&&FLOW.hideOV)){const groups=new Map();for(const l of vis){const o=OV.links.get(l);if(!o)continue;const key=o.c+"|"+o.w.toFixed(1)+"|"+(o.dash?1:0);let g=groups.get(key);if(!g){g=[];groups.set(key,g);}g.push(l);}
+    for(const [key,arr] of groups){const [c,w,dash]=key.split("|");C.strokeStyle=c;C.lineWidth=+w;if(dash==="1")C.setLineDash([6,5]);pathLinks(C,arr);C.stroke();C.setLineDash([]);}
+    if(OV.nodes&&OV.nodes.size&&s>0.08){for(const [n,c] of OV.nodes){const X_=(X[n]-cx)*s+hw,Y_=hh-(Y[n]-cy)*s;if(X_<-5||Y_<-5||X_>VP.w+5||Y_>VP.h+5)continue;C.fillStyle=c;C.beginPath();C.arc(X_,Y_,s>0.6?2.4:1.6,0,6.283);C.fill();}}}
+  // 선택(다중) 강조
+  if(SELN.length){C.strokeStyle=SELC;C.lineWidth=s>0.3?4.5:3.5;C.globalAlpha=.6;const ls=SELN.filter(e=>e.t==="l").map(e=>e.i);if(ls.length){pathLinks(C,ls);C.stroke();}C.globalAlpha=1;
+    for(const e of SELN){if(e.t!=="n")continue;const X_=sx(X[e.i]),Y_=sy(Y[e.i]);C.strokeStyle=SELC;C.lineWidth=2;C.beginPath();C.arc(X_,Y_,6,0,6.283);C.stroke();}}
+  if(layers.facil)drawFacilities(C,vis,s);
+  if(typeof drawGis==="function")drawGis(C);
+  drawBasemapLabels(C,x0,y0,x1,y1);
+  C.textAlign="center";C.textBaseline="middle";
+  if(layers.dong&&s<0.06){C.font=`700 13px ${FF}`;C.fillStyle="#7a6a8a";for(const d of DONGS){const X_=(d.cx-cx)*s+hw,Y_=hh-(d.cy-cy)*s;if(X_>0&&X_<W&&Y_>0&&Y_<VP.h)C.fillText(d.n,X_,Y_);}}
+  if(layers.labels&&s>=0.06&&s<1.2&&!BM){C.font=`500 11px ${FF}`;C.fillStyle=css("--ink");C.globalAlpha=0.7;for(let d=0;d<DMACEN.length;d++){const c=DMACEN[d];if(!c||!NET.dmas[d]||c[2]<20)continue;const X_=(c[0]-cx)*s+hw,Y_=hh-(c[1]-cy)*s;if(X_>0&&X_<W&&Y_>0&&Y_<VP.h)C.fillText(NET.dmas[d],X_,Y_);}C.globalAlpha=1;}
+  if(OV&&OV.meters&&s>0.05){const big=s>0.35;C.font=`700 10px ${FF}`;
+    for(const [n,o] of OV.meters){const X_=(X[n]-cx)*s+hw,Y_=hh-(Y[n]-cy)*s;if(X_<-20||Y_<-20||X_>VP.w+20||Y_>VP.h+20)continue;
+      if(big){const t=String(o.n),w=Math.max(14,C.measureText(t).width+6);C.fillStyle="#fff";C.strokeStyle=o.c;C.lineWidth=1.5;C.fillRect(X_-w/2,Y_-17,w,13);C.strokeRect(X_-w/2,Y_-17,w,13);C.fillStyle=o.c;C.fillText(t,X_,Y_-10.5);}
+      else{C.fillStyle="#fff";C.strokeStyle=o.c;C.lineWidth=1.3;C.fillRect(X_-3,Y_-3,6,6);C.strokeRect(X_-3,Y_-3,6,6);}}}
+  if(OV&&OV.marks){C.font=`700 11px ${FF}`;for(const m of OV.marks){const X_=(m.x-cx)*s+hw,Y_=hh-(m.y-cy)*s;if(X_<-20||Y_<-20||X_>VP.w+20||Y_>VP.h+20)continue;C.fillStyle=m.c;C.strokeStyle="#fff";C.lineWidth=1.5;C.beginPath();C.arc(X_,Y_,7,0,6.283);C.fill();C.stroke();C.fillStyle="#fff";C.fillText(m.t,X_,Y_+0.5);}}
+  if(OV&&OV.extra){C.lineCap="round";for(const e of OV.extra){C.strokeStyle="#fff";C.lineWidth=5;C.beginPath();C.moveTo(sx(e.x1),sy(e.y1));C.lineTo(sx(e.x2),sy(e.y2));C.stroke();C.strokeStyle=e.c||"#7b2cbf";C.lineWidth=2.6;C.setLineDash([7,5]);C.beginPath();C.moveTo(sx(e.x1),sy(e.y1));C.lineTo(sx(e.x2),sy(e.y2));C.stroke();C.setLineDash([]);}}
+  if(OV&&OV.tags)drawTags(C,OV.tags);
+  if(OV&&OV.pins)for(const p of OV.pins)drawPin(C,sx(p.x),sy(p.y),p.c||"#e0119d",p.label);
+  if(PIN)drawPin(C,sx(PIN.x),sy(PIN.y),"#e0119d",PIN.label);
+  drawScale(C);C.restore();
+}
+let GVP=null;
+function halves(){const mapH=Hh-sheetH();if(W>mapH*1.15)return [{ox:0,oy:0,w:Math.floor(W/2),h:mapH},{ox:Math.floor(W/2),oy:0,w:W-Math.floor(W/2),h:mapH}];const h1=Math.floor(mapH/2);return [{ox:0,oy:0,w:W,h:h1},{ox:0,oy:h1,w:W,h:mapH-h1}];}
+function useVP(px,py,start){if(start){GVP=null;if(SPLIT){const hs=halves();GVP=hs.find(v=>px>=v.ox&&px<v.ox+v.w&&py>=v.oy&&py<v.oy+v.h)||hs[1];}}VP=GVP||{ox:0,oy:0,w:W,h:Hh};}
+function draw(){needDraw=false;
+  if(SPLIT){const hs=halves();const key=[view.cx,view.s,view.cy,W,Hh,"S",sheetH()].join(",");const saveOV=OV;
+    if(baseDirty||key!==bView||interacting){bctx.setTransform(1,0,0,1,0,0);bctx.clearRect(0,0,bc.width,bc.height);
+      hs.forEach((v,k)=>{VP=v;OV=SPLIT.ov[k];bctx.save();bctx.setTransform(DPR,0,0,DPR,0,0);bctx.beginPath();bctx.rect(v.ox,v.oy,v.w,v.h);bctx.clip();drawBase(bctx);bctx.restore();});
+      OV=saveOV;bView=key;baseDirty=false;}
+    ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,cv.width,cv.height);ctx.drawImage(bc,0,0);const t=performance.now();
+    hs.forEach((v,k)=>{VP=v;const f=SPLIT.flow&&SPLIT.flow[k];if(f)drawArrows(ctx,f.set,f.q,f.p,t);
+      ctx.setTransform(DPR,0,0,DPR,0,0);const lab=SPLIT.labels[k],sub=SPLIT.sub[k];ctx.font=`700 13px ${FF}`;const w=Math.max(ctx.measureText(lab).width,(ctx.font=`500 11.5px ${FF}`,ctx.measureText(sub).width))+16;
+      const lx=v.ox+8,ly=v.oy+(v.oy===0?(W>Hh-sheetH()?118:118):8);ctx.fillStyle=k?"rgba(28,154,78,.92)":"rgba(215,38,61,.92)";ctx.fillRect(lx,ly,Math.min(w,v.w-16),36);ctx.fillStyle="#fff";ctx.textAlign="left";ctx.textBaseline="top";ctx.font=`700 13px ${FF}`;ctx.fillText(lab,lx+8,ly+3,v.w-32);ctx.font=`500 11.5px ${FF}`;ctx.fillText(sub,lx+8,ly+20,v.w-32);});
+    ctx.setTransform(DPR,0,0,DPR,0,0);ctx.fillStyle="#222";const v1=hs[1];if(v1.ox>0)ctx.fillRect(v1.ox-1,0,2,v1.h);else ctx.fillRect(0,v1.oy-1,W,2);
+    VP={ox:0,oy:0,w:W,h:Hh};return;}
+  VP={ox:0,oy:0,w:W,h:Hh};
+  const key=[view.cx,view.s,view.cy,W,Hh].join(",");
+  if(baseDirty||key!==bView||interacting){drawBase(bctx);bView=key;baseDirty=false;}
+  ctx.setTransform(1,0,0,1,0,0);ctx.drawImage(bc,0,0);ctx.setTransform(DPR,0,0,DPR,0,0);
+  if(FLOW)drawFlow(ctx);
+  drawGps(ctx);
+}
+function drawPin(C,x,y,col,label){C.save();C.fillStyle=col;C.strokeStyle="#fff";C.lineWidth=2;C.beginPath();C.arc(x,y-14,8,0,6.283);C.moveTo(x-5,y-8);C.lineTo(x,y);C.lineTo(x+5,y-8);C.fill();C.stroke();C.fillStyle="#fff";C.beginPath();C.arc(x,y-14,3,0,6.283);C.fill();
+  if(label){C.font=`600 12px ${FF}`;C.textAlign="left";C.textBaseline="middle";const w=C.measureText(label).width;C.fillStyle="#fff";C.globalAlpha=.94;C.fillRect(x+11,y-24,w+10,20);C.globalAlpha=1;C.fillStyle=col;C.fillText(label,x+16,y-14);}C.restore();}
+function drawScale(C){const target=90/view.s;const p=Math.pow(10,Math.floor(Math.log10(target)));const m=[1,2,5,10].map(k=>k*p).filter(v=>v<=target).pop()||p;const w=m*view.s;
+  const y=Math.min(VP.h,Hh-sheetH()-VP.oy)-16,x=14;C.strokeStyle="#111";C.lineWidth=2;C.beginPath();C.moveTo(x,y-5);C.lineTo(x,y);C.lineTo(x+w,y);C.lineTo(x+w,y-5);C.stroke();
+  C.font=`600 11px ${FF}`;C.fillStyle="#111";C.textAlign="left";C.textBaseline="bottom";C.fillText(m>=1000?(m/1000)+" km":m+" m",x+4,y-4);C.textBaseline="middle";}
+function drawFacilities(C,vis,s){
+  const sc=(x,y)=>[(x-view.cx)*s+VP.w/2,VP.h/2-(y-view.cy)*s];
+  C.font=`700 12px ${FF}`;C.textAlign="left";C.textBaseline="middle";
+  for(const r of RES){const [a,b]=sc(X[r],Y[r]);if(a<-40||b<-40||a>VP.w+40||b>VP.h+40)continue;C.fillStyle=css("--accent");C.strokeStyle="#fff";C.lineWidth=2;C.beginPath();C.rect(a-5.5,b-5.5,11,11);C.fill();C.stroke();
+    if(layers.labels){C.fillStyle="#111";C.strokeStyle="#fff";C.lineWidth=3.5;C.strokeText(resName(r),a+11,b);C.fillText(resName(r),a+11,b);}}
+  if(s<0.03)return;
+  for(const l of vis){const t=LT[l];if(t!==2&&t!==3&&!(t===7||INIT[l]===0&&s>0.12))continue;
+    if((t===7||INIT[l]===0)&&(!layers.valves||s<0.05))continue;if(t===3&&s<0.06)continue;
+    const [mx,my]=linkMid(l);const [a,b]=sc(mx,my);if(a<-10||b<-10||a>VP.w+10||b>VP.h+10)continue;
+    if(t===2){C.fillStyle="#7b5cd6";C.strokeStyle="#fff";C.lineWidth=1.5;C.beginPath();C.moveTo(a,b-5.5);C.lineTo(a+5,b+4);C.lineTo(a-5,b+4);C.closePath();C.fill();C.stroke();}
+    else if(t===3){C.fillStyle="#c2410c";C.strokeStyle="#fff";C.lineWidth=1.5;C.beginPath();C.moveTo(a,b-5);C.lineTo(a+5,b);C.lineTo(a,b+5);C.lineTo(a-5,b);C.closePath();C.fill();C.stroke();}
+    else{const closed=scStatus(l)===0;C.lineWidth=1.4;C.strokeStyle=closed?"#141414":css("--ok");C.fillStyle="#fff";C.beginPath();C.arc(a,b,3.8,0,6.283);C.fill();C.stroke();
+      if(closed){C.beginPath();C.moveTo(a-2.2,b-2.2);C.lineTo(a+2.2,b+2.2);C.moveTo(a+2.2,b-2.2);C.lineTo(a-2.2,b+2.2);C.stroke();}}
+    if(layers.labels&&s>0.35&&(t===2||t===3)){const nm=linkName(l);C.fillStyle="#111";C.strokeStyle="#fff";C.lineWidth=3;C.font=`500 11px ${FF}`;C.strokeText(nm,a+9,b);C.fillText(nm,a+9,b);}}
+  // 조작 밸브 표시는 OV.tags(drawTags)에서
+}
+let lastFrame=0;
+function loop(t){if(((FLOW&&FLOW.anim)||(SPLIT&&SPLIT.flow&&SPLIT.flow[0]))&&t-lastFrame>40){needDraw=true;lastFrame=t;}if(needDraw)draw();requestAnimationFrame(loop);}
+
+/* ============ GPS 현재 위치 ============ */
+const GEO={watch:null,pos:null,follow:true,first:true};
+function drawGps(C){if(!GEO.pos)return;const p=GEO.pos;C.save();C.setTransform(DPR,0,0,DPR,0,0);const X_=sx(p.x),Y_=sy(p.y);const r=Math.max(0,p.acc*view.s);
+  if(r>8){C.fillStyle="rgba(26,115,232,.13)";C.strokeStyle="rgba(26,115,232,.45)";C.lineWidth=1;C.beginPath();C.arc(X_,Y_,r,0,6.283);C.fill();C.stroke();}
+  if(p.head!=null&&!isNaN(p.head)){C.save();C.translate(X_,Y_);C.rotate(p.head*Math.PI/180);C.fillStyle="rgba(26,115,232,.35)";C.beginPath();C.moveTo(0,0);C.arc(0,0,26,-Math.PI/2-0.45,-Math.PI/2+0.45);C.closePath();C.fill();C.restore();}
+  C.fillStyle="#fff";C.beginPath();C.arc(X_,Y_,9,0,6.283);C.fill();C.fillStyle="#1a73e8";C.beginPath();C.arc(X_,Y_,6.5,0,6.283);C.fill();C.restore();}
+function gpsBtn(){const b=$("#btnGps");b.classList.toggle("gps-on",!!GEO.watch&&!!GEO.pos&&GEO.follow);b.classList.toggle("gps-wait",!!GEO.watch&&(!GEO.pos||!GEO.follow));}
+function startGps(){if(!("geolocation" in navigator)){toast("이 기기에서는 위치를 쓸 수 없습니다.");return;}
+  if(GEO.watch!=null){if(!GEO.follow&&GEO.pos){GEO.follow=true;flyTo(GEO.pos.x,GEO.pos.y,Math.max(view.s,0.8));gpsBtn();return;}navigator.geolocation.clearWatch(GEO.watch);GEO.watch=null;GEO.pos=null;gpsBtn();needDraw=true;toast("위치 표시를 껐습니다.");return;}
+  GEO.follow=true;GEO.first=true;toast("현재 위치를 찾는 중…",2000);
+  try{GEO.watch=navigator.geolocation.watchPosition(pos=>{const c=pos.coords;const [x,y]=toLocal(c.latitude,c.longitude);GEO.pos={x,y,acc:c.accuracy||0,head:c.heading};
+      if(GEO.first){GEO.first=false;if(x<BOUNDS.x0-5000||x>BOUNDS.x1+5000||y<BOUNDS.y0-5000||y>BOUNDS.y1+5000)toast("현재 위치가 광주시 관망 밖입니다.",3000);flyTo(x,y,Math.max(view.s,0.8));}
+      else if(GEO.follow){view.cx=x;view.cy=y+(sheetH()+20-120)/2/view.s;redraw();}
+      gpsBtn();needDraw=true;},
+    err=>{const m=err.code===1?"위치 권한이 없습니다. 이 화면(claude.ai 안)에서는 위치를 쓸 수 없고, 앱을 일반 웹 주소(https)로 열면 쓸 수 있습니다.":err.code===2?"위치를 찾을 수 없습니다. GPS를 켜 주세요.":"위치 응답이 늦습니다. 잠시 후 다시 눌러 주세요.";
+      toast(m,5200);if(err.code===1&&GEO.watch!=null){navigator.geolocation.clearWatch(GEO.watch);GEO.watch=null;}gpsBtn();},
+    {enableHighAccuracy:true,maximumAge:3000,timeout:20000});}catch(e){toast("이 화면에서는 위치를 쓸 수 없습니다.");}
+  gpsBtn();}
+
+/* ============ 선택(다중) ============ */
+let SELN=[];  // [{t:"n"|"l", i}]
+let PIN=null; // 검색 위치 핀
+const selKey=()=>SELN.map(e=>e.t+e.i).join(",");
+const isSel=(t,i)=>SELN.some(e=>e.t===t&&e.i===i);
+function toggleSel(t,i){if(isSel(t,i))SELN=[];else SELN=[{t,i}];if(SC&&SC.key!==selAsCut().join(","))SC=null;redraw();}
+function addSel(t,i){if(!isSel(t,i)){SELN=[{t,i}];if(SC&&SC.key!==selAsCut().join(","))SC=null;}redraw();}
+const selNodes=()=>SELN.filter(e=>e.t==="n").map(e=>e.i);
+const selLinks=()=>SELN.filter(e=>e.t==="l").map(e=>e.i);
+function downNodeOf(l,h){const d=flowDir(l,h);return d<0?N1[l]:N2[l];}
+function upNodeOf(l,h){const d=flowDir(l,h);return d<0?N2[l]:N1[l];}
+function upTargets(){const h=HOUR;const s=new Set(selNodes());for(const l of selLinks())s.add(downNodeOf(l,h));return [...s];}
+function downSources(){const h=HOUR;const s=new Set(selNodes());for(const l of selLinks())s.add(upNodeOf(l,h));return [...s];}
+function selAsCut(){const s=new Set(selLinks().filter(l=>INIT[l]!==0));for(const n of selNodes()){if(NT[n]!==0)continue;for(let k=ADJS[n];k<ADJS[n+1];k++){const l=ADJ[k];if(INIT[l]!==0)s.add(l);}}return [...s];}
+
+/* ============ gestures ============ */
+const ptrs=new Map();let lpTimer=0,downInfo=null,pinch=null;
+cv.addEventListener("pointerdown",e=>{useVP(e.clientX,e.clientY,true);cv.setPointerCapture(e.pointerId);ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});hideCtx();hideResults();
+  if(ptrs.size===1){downInfo={x:e.clientX,y:e.clientY,t:Date.now(),cx:view.cx,cy:view.cy,moved:false};clearTimeout(lpTimer);lpTimer=setTimeout(()=>{if(downInfo&&!downInfo.moved&&ptrs.size===1){downInfo.long=true;onLongPress(downInfo.x,downInfo.y);}},520);}
+  else if(ptrs.size===2){clearTimeout(lpTimer);if(downInfo)downInfo.moved=true;const [a,b]=[...ptrs.values()];pinch={d:Math.hypot(a.x-b.x,a.y-b.y),s:view.s,wx:wx((a.x+b.x)/2),wy:wy((a.y+b.y)/2)};}
+  interacting=true;});
+cv.addEventListener("pointermove",e=>{if(!ptrs.has(e.pointerId))return;useVP();ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  if(ptrs.size===1&&downInfo){const dx=e.clientX-downInfo.x,dy=e.clientY-downInfo.y;if(!downInfo.moved&&Math.hypot(dx,dy)>8){downInfo.moved=true;clearTimeout(lpTimer);}
+    if(downInfo.moved&&!downInfo.long){if(GEO.follow&&GEO.pos){GEO.follow=false;gpsBtn();}view.cx=downInfo.cx-dx/view.s;view.cy=downInfo.cy+dy/view.s;needDraw=true;}}
+  else if(ptrs.size===2&&pinch){const [a,b]=[...ptrs.values()];const d=Math.hypot(a.x-b.x,a.y-b.y);view.s=Math.max(0.004,Math.min(8,pinch.s*d/pinch.d));const mx=(a.x+b.x)/2,my=(a.y+b.y)/2;
+    view.cx=pinch.wx-(mx-VP.ox-VP.w/2)/view.s;view.cy=pinch.wy+(my-VP.oy-VP.h/2)/view.s;needDraw=true;}});
+function endPtr(e){if(!ptrs.has(e.pointerId))return;useVP();ptrs.delete(e.pointerId);
+  if(ptrs.size===0){clearTimeout(lpTimer);if(downInfo&&!downInfo.moved&&!downInfo.long&&Date.now()-downInfo.t<500)onTap(downInfo.x,downInfo.y);downInfo=null;pinch=null;interacting=false;redraw();}
+  else if(ptrs.size===1){const [a]=[...ptrs.values()];downInfo={x:a.x,y:a.y,t:0,cx:view.cx,cy:view.cy,moved:true};pinch=null;}}
+cv.addEventListener("pointerup",endPtr);cv.addEventListener("pointercancel",endPtr);
+cv.addEventListener("wheel",e=>{e.preventDefault();useVP(e.clientX,e.clientY,true);const f=Math.exp(-e.deltaY*0.0015);const mx=wx(e.clientX),my=wy(e.clientY);view.s=Math.max(0.004,Math.min(8,view.s*f));view.cx=mx-(e.clientX-VP.ox-VP.w/2)/view.s;view.cy=my+(e.clientY-VP.oy-VP.h/2)/view.s;needDraw=true;},{passive:false});
+cv.addEventListener("contextmenu",e=>{e.preventDefault();onLongPress(e.clientX,e.clientY);});
+
+function hitAt(px,py){const r=14;const x=wx(px),y=wy(py);let best=null,bd=r;
+  for(const n of RES){const d=Math.hypot(sx(X[n])-px,sy(Y[n])-py);if(d<bd){bd=d;best={t:"n",i:n};}}
+  if(view.s>=0.03)for(const l of linksIn(x-r/view.s,y-r/view.s,x+r/view.s,y+r/view.s)){const t=LT[l];if(t!==2&&t!==3&&t!==7&&INIT[l]!==0)continue;const [mx,my]=linkMid(l);const d=Math.hypot(sx(mx)-px,sy(my)-py);if(d<bd){bd=d;best={t:"l",i:l};}}
+  if(best)return best;
+  if(view.s>0.15){const n=nearestNode(x,y,7/view.s);if(n>=0)return {t:"n",i:n};}
+  const l=nearestLink(x,y,11/view.s);if(l>=0)return {t:"l",i:l};
+  return null;}
+function onTap(px,py){
+  if(SPLIT)return;
+  const g=typeof gisHit==="function"?gisHit(px,py):null;if(g){CUR=null;renderTabs();showGis(g);return;}
+  const h=hitAt(px,py);if(!h)return;toggleSel(h.t,h.i);openChapter("sel");}
+function onLongPress(px,py){if(SPLIT)return;if(navigator.vibrate)try{navigator.vibrate(15)}catch(e){}
+  const h=hitAt(px,py);if(h)addSel(h.t,h.i);
+  if(!SELN.length){toast("이 근처에는 관로가 없습니다.");return;}
+  openChapter("sel");
+  const m=$("#ctx");const e=SELN[0];const nm=e.t==="l"?linkName(e.i):(NT[e.i]===1?resName(e.i):"절점 "+NET.nodes.id[e.i]);
+  m.innerHTML=`<div class="hd"><b>${esc(nm)}</b></div>
+   <button data-a="up"><span class="sw" style="background:var(--sel-solid)"></span>급수원 선택 <span style="color:var(--muted);font-size:12px">상류 관망</span></button>
+   <button data-a="down"><span class="sw" style="background:var(--sel-solid)"></span>급수구역 선택 <span style="color:var(--muted);font-size:12px">하류 관망</span></button>
+   <button data-a="cut"><span class="sw" style="background:var(--cut)"></span>단수 <span style="color:var(--muted);font-size:12px">여기가 끊기면</span></button>
+   <button data-a="link"><span class="sw" style="background:var(--ok)"></span>비상연계</button>
+   <button data-a="flush"><span class="sw" style="background:#1565c0"></span>복구 후 이토 지점</button>
+   <button data-a="cust"><span class="sw" style="background:#555"></span>수용가(수도미터)</button>
+   <button data-a="ai"><span class="sw" style="background:#7b2cbf"></span>AI에게 묻기 <span style="color:var(--muted);font-size:12px">이 지점</span></button>`;
+  m.hidden=false;const r=m.getBoundingClientRect();m.style.left=Math.max(8,Math.min(W-r.width-8,px-r.width/2))+"px";m.style.top=Math.max(8,Math.min(Hh-r.height-8,py+12))+"px";
+  m.onclick=ev=>{const b=ev.target.closest("button");if(!b)return;hideCtx();openChapter(b.dataset.a);};}
+function hideCtx(){$("#ctx").hidden=true;}
+
+/* ============ sheet & chapters ============ */
+const sheet=$("#sheet");let sheetState="closed";const SH={closed:0,peek:150,half:()=>Math.round(innerHeight*0.48),full:()=>Math.round(innerHeight*0.88)};
+function sheetH(){const v=SH[sheetState];return typeof v==="function"?v():v;}
+function setSheet(st){sheetState=st;sheet.style.height=sheetH()+"px";placeFloating();needDraw=true;}
+function openSheet(title,sub,html,st){$("#shTitle").textContent=title;$("#shSub").textContent=sub||"";$("#shBody").innerHTML=html;$("#shBody").scrollTop=0;
+  const want=st||"half";setSheet(sheetState==="full"&&want==="half"?"full":want);}
+$("#shClose").onclick=()=>setSheet(sheetState==="peek"?"half":"peek");
+(()=>{let y0=0,h0=0,drag=false;const g=$("#grab");
+  g.addEventListener("pointerdown",e=>{if(e.target.closest(".xbtn")||e.target.closest(".tabs"))return;drag=true;y0=e.clientY;h0=sheet.getBoundingClientRect().height;sheet.classList.add("dragging");g.setPointerCapture(e.pointerId);});
+  g.addEventListener("pointermove",e=>{if(!drag)return;const h=Math.max(60,Math.min(innerHeight*0.92,h0+(y0-e.clientY)));sheet.style.height=h+"px";});
+  g.addEventListener("pointerup",e=>{if(!drag)return;drag=false;sheet.classList.remove("dragging");const h=sheet.getBoundingClientRect().height;const moved=Math.abs(e.clientY-y0)>6;
+    if(!moved){setSheet(sheetState==="peek"?"half":sheetState==="half"?"full":"half");return;}
+    const opts=[["peek",SH.peek],["half",SH.half()],["full",SH.full()]];let best="half",bd=1e9;for(const [k,v] of opts){if(Math.abs(v-h)<bd){bd=Math.abs(v-h);best=k;}}setSheet(best);});})();
+function placeFloating(){const b=sheetH();$("#legend").style.bottom=`calc(${b+12}px + env(safe-area-inset-bottom,0px))`;$("#editbar").style.bottom=`calc(${b+14}px + env(safe-area-inset-bottom,0px))`;$("#banner").style.top=`calc(env(safe-area-inset-top,0px) + 108px)`;}
+function setLegend(items){const lg=$("#legend");if(!items||!items.length){lg.hidden=true;return;}lg.innerHTML=items.map(i=>`<div class="row"><span class="sw" style="background:${i.c}${i.round?";height:10px;width:10px;border-radius:50%":""}"></span><span class="lab">${esc(i.t)}</span></div>`).join("");lg.hidden=false;placeFloating();}
+
+const CHAPTERS=[["sel","선택"],["ai","AI"],["up","급수원"],["down","급수구역"],["cut","단수"],["link","비상연계"],["flow","물 흐름"],["flush","이토"],["cust","수용가"]];
+let CUR=null;
+function chapterEnabled(c){if(c==="sel"||c==="ai")return true;const has=SELN.length>0;return has;}
+function renderTabs(){const t=$("#tabs");t.innerHTML=CHAPTERS.map(([k,n])=>`<button data-c="${k}" class="${k===CUR?"on":""}" ${chapterEnabled(k)?"":"disabled"}>${n}</button>`).join("");
+  t.onclick=e=>{const b=e.target.closest("button");if(!b||b.disabled)return;openChapter(b.dataset.c);};
+  const on=t.querySelector(".on");if(on)on.scrollIntoView({block:"nearest",inline:"nearest"});}
+function openChapter(c){if(c!=="flow")stopFlow();if(c!=="link"&&c!=="ai")SPLIT=null;if(c!=="ai"&&AI.scen&&!AI.keepOV){AI.scen=null;}CUR=c;
+  ({ai:openAI,sel:showSelection,up:traceUp,down:traceDown,cut:openCut,link:openLink,flow:openFlow,flush:openFlush,cust:openCust})[c]();renderTabs();}
+
+/* ============ 초기화 (X / Esc) ============ */
+function resetAll(){if(typeof AI!=="undefined"){try{AI.ctl&&AI.ctl.abort();}catch(e){}AI.log=[];AI.turns=[];AI.scen=null;AI.plans=null;AI.busy=false;}stopFlow();SPLIT=null;SELN=[];SC=null;OV=null;PIN=null;CUR=null;LAST=null;setEdit(false);setLegend(null);hideCtx();hideResults();$("#q").value="";$("#chipSim").classList.remove("on");
+  sheetState="closed";sheet.style.height="0px";placeFloating();redraw();}
+$("#btnReset").onclick=resetAll;
+addEventListener("keydown",e=>{if(e.key==="Escape"){if(!$("#results").hidden){hideResults();return;}resetAll();}});
+
+/* ============ hour ============ */
+let HOUR=new Date().getHours();let LAST=null;
+(()=>{const s=$("#hour");for(let h=0;h<24;h++){const o=document.createElement("option");o.value=h;o.textContent=hh2(h)+":00 기준";s.appendChild(o);}s.value=HOUR;
+  s.onchange=()=>{HOUR=+s.value;toast(`${hh2(HOUR)}시 해석 결과로 다시 계산합니다.`);if(SC){SC.q={};}if(CUR)openChapter(CUR);else redraw();};})();
+
+/* ============ 선택 장: 제원 ============ */
+const kgf=m=>m==null||isNaN(m)?"–":(m/10).toFixed(2)+" kgf/cm² ("+fmt(m,1)+" m)";
+function velocity(q,d){if(!d)return null;const A=Math.PI*(d/1000)**2/4;return Math.abs(q)/86400/A;}
+function specNode(n){const h=HOUR;const res=NT[n]===1;let outQ=0;if(res)for(let k=ADJS[n];k<ADJS[n+1];k++)outQ+=Math.abs(Qh(h,ADJ[k]));
+  const title=res?resName(n):"절점 "+NET.nodes.id[n];
+  const kv=res?[["구분",resKind(n)],["수위(H)",fmt(NET.nodes.e[n],1)+" m"],["유출량",fmt(outQ,0)+" m³/일"]]
+   :[["소블록",NET.dmas[DMA[n]]||"–"],["표고",fmt(NET.nodes.e[n],2)+" m"],["수압",kgf(Ph(h,n))],["수요량",fmt(Dh(h,n)/24,2)+" m³/h ("+fmt(Dh(h,n),1)+" m³/일)"],["수도미터",CN?fmt(CN[n])+" 개":"…"]];
+  return {title,kind:res?resKind(n):"절점",kv,x:X[n],y:Y[n]};}
+function specLink(l){const h=HOUR;const q=Qh(h,l),t=LT[l];const kd=NET.kinds[NET.links.k[l]],yr=NET.links.yr[l];const [mx,my]=linkMid(l);
+  const kv=[["관경",fmt(DIA[l])+" mm"]];
+  if(t===1||t===0){kv.push(["연장",fmt(LEN[l],1)+" m"],["관종",kd||"–"],["부설년도",yr||"–"]);}
+  if(t===3)kv.push(["설정 압력",(NET.links.set[l]/10).toFixed(2)+" kgf/cm² ("+fmt(NET.links.set[l],0)+" m)"]);
+  if(t===2){const a=N1[l],b=N2[l];kv.push(["가압 수두",fmt((NET.nodes.e[b]+Ph(h,b))-(NET.nodes.e[a]+Ph(h,a)),1)+" m"]);}
+  kv.push(["시간당 유량",fmt(Math.abs(q)/24,1)+" m³/h"],["일 유량",fmt(Math.abs(q),0)+" m³/일"]);{const a=N1[l],b=N2[l];const up=q<0?b:a,dn=q<0?a:b;if(t===3||t===2){kv.push(["상류 수압",kgf(Ph(h,a))],["하류 수압",kgf(Ph(h,b))]);}else{kv.push(["수압(상류측)",kgf(Ph(h,up))],["수압(하류측)",kgf(Ph(h,dn))]);}}const v=velocity(q,DIA[l]);if(v!=null&&t!==2)kv.push(["유속",fmt(v,2)+" m/s"]);
+  kv.push(["상태",(scStatus(l)===0?"닫힘":"열림")+(INIT[l]===0?" (평상시 폐쇄)":"")],["흐름",Math.abs(q)<0.01?"정체":q>0?"시점→종점":"종점→시점"],["블록",NET.blks[NET.links.blk[l]]||NET.dmas[DMA[N1[l]]]||"–"],["관로 ID",NET.links.id[l]]);
+  if(NET.links.c[l])kv.push(["비고",NET.links.c[l]]);
+  return {title:linkName(l),kind:linkKind(l),kv,x:mx,y:my};}
+function showSelection(){
+  if(!SELN.length){OV=null;setLegend(null);openSheet("선택","지도에서 관로·시설을 눌러 선택하세요",`<p class="note">한 번 누르면 그 관로·시설이 선택되고 제원이 여기 나옵니다. 다른 곳을 누르면 선택이 바뀌고, 같은 곳을 다시 누르면 풀립니다.</p><p class="note">길게 누르면 <b>급수원 선택 · 급수구역 선택 · 단수 · 비상연계 · 이토 · 수용가</b>를 고를 수 있습니다. 위 탭으로 바꿔 볼 수도 있습니다. 단수는 선택한 곳이 끊긴 것으로 계산합니다.</p>`,sheetState==="closed"?"peek":undefined);return;}
+  OV=null;setLegend(null);
+  const cards=SELN.map((e,k)=>{const sp=e.t==="n"?specNode(e.i):specLink(e.i);const [la,lo]=toLatLon(sp.x,sp.y);
+    return `<div class="card"><div class="hd"><span class="tag">${esc(sp.kind)}</span><b>${esc(sp.title)}</b><a class="btn" style="height:28px;padding:0 8px;font-size:12px" target="_blank" rel="noopener" href="https://map.kakao.com/link/map/${encodeURIComponent(sp.title)},${la.toFixed(6)},${lo.toFixed(6)}">카카오맵</a><button class="btn" style="height:28px;padding:0 8px;font-size:12px" data-go="${k}">위치</button><button class="xbtn" data-rm="${k}" aria-label="선택 해제"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+     <div class="kv">${sp.kv.map(([a,b])=>`<div><span>${esc(a)}</span><b>${esc(b)}</b></div>`).join("")}</div></div>`;}).join("");
+  openSheet("선택",`${hh2(HOUR)}:00 기준 제원 · 길게 누르면 분석 메뉴`,`${cards}<div class="actions"><button class="btn" id="sClear">선택 해제</button></div>`,sheetState==="closed"||sheetState==="peek"?"half":undefined);
+  const B=$("#shBody");B.querySelectorAll("[data-rm]").forEach(b=>b.onclick=()=>{SELN.splice(+b.dataset.rm,1);redraw();openChapter("sel");});
+  B.querySelectorAll("[data-go]").forEach(b=>b.onclick=()=>{const e=SELN[+b.dataset.go];const sp=e.t==="n"?specNode(e.i):specLink(e.i);flyTo(sp.x,sp.y,Math.max(view.s,0.6));});
+  $("#sClear").onclick=()=>{SELN=[];redraw();openChapter("sel");};redraw();}
+
+function flyTo(x,y,s){const s0=view.s,x0=view.cx,y0=view.cy;const off=(sheetH()+20-120)/2/s;const t0=performance.now();const dur=matchMedia("(prefers-reduced-motion: reduce)").matches?0:350;
+  const step=t=>{const k=dur?Math.min(1,(t-t0)/dur):1,e=k<.5?2*k*k:1-Math.pow(-2*k+2,2)/2;view.s=s0*Math.pow(s/s0,e);view.cx=x0+(x-x0)*e;view.cy=y0+(y-off-y0)*e;needDraw=true;if(k<1)requestAnimationFrame(step);else redraw();};requestAnimationFrame(step);}
+function wireRows(){$("#shBody").querySelectorAll("tr.click").forEach(tr=>{if(tr.dataset.c!=null)return;tr.onclick=()=>{const l=tr.dataset.l,n=tr.dataset.n,d=tr.dataset.d;
+  if(l!=null){const [x,y]=linkMid(+l);flyTo(x,y,Math.max(view.s,0.6));}else if(n!=null){flyTo(X[+n],Y[+n],Math.max(view.s,0.6));}else if(d!=null){const c=DMACEN[+d];if(c)flyTo(c[0],c[1],Math.max(view.s,0.12));}};});}
+function tagFor(l){const t=LT[l];return t===2?'<span class="tag pump">가압장</span>':t===3?'<span class="tag prv">감압밸브</span>':t===7?'<span class="tag tcv">경계밸브</span>':INIT[l]===0?'<span class="tag">폐쇄관로</span>':'<span class="tag">관로</span>';}
+
+/* ============ 급수원 (상류) ============ */
+let TMODE=store("tmode")||"sel";
+function segHtml(grp){return `<div class="seg" role="group" aria-label="선 표시 방식"><button data-m="sel" class="${TMODE==="sel"?"on":""}">선택 색</button><button data-m="grp" class="${TMODE==="grp"?"on":""}">${grp}</button></div>`;}
+function wireSeg(){$("#shBody").querySelectorAll(".seg button").forEach(b=>b.onclick=()=>{TMODE=b.dataset.m;store("tmode",TMODE);openChapter(CUR);});}
+function traceUp(){const targets=upTargets();if(!targets.length){openChapter("sel");return;}const h=HOUR;
+  const state=new Uint8Array(NN),pos=new Int32Array(NN).fill(-1),order=[];
+  for(const tg of targets){if(state[tg])continue;const stack=[tg],it=[ADJS[tg]];state[tg]=1;
+    while(stack.length){const v=stack[stack.length-1];let k=it[it.length-1];let pushed=false;
+      for(;k<ADJS[v+1];k++){const l=ADJ[k];const dir=flowDir(l,h);if(!dir)continue;const from=dir>0?N1[l]:N2[l],to=dir>0?N2[l]:N1[l];if(to!==v)continue;
+        if(state[from]===0){state[from]=1;it[it.length-1]=k+1;stack.push(from);it.push(ADJS[from]);pushed=true;break;}}
+      if(!pushed){state[v]=2;pos[v]=order.length;order.push(v);stack.pop();it.pop();}}}
+  const facs=[],facIdx=new Map(),upLinks=[];
+  for(const v of order)for(let k=ADJS[v];k<ADJS[v+1];k++){const l=ADJ[k];const dir=flowDir(l,h);if(!dir)continue;const from=dir>0?N1[l]:N2[l],to=dir>0?N2[l]:N1[l];if(to!==v||state[from]!==2)continue;upLinks.push(l);
+    if((LT[l]===2||LT[l]===3||LT[l]===7)&&!facIdx.has(l)){facIdx.set(l,facs.length);facs.push(l);}}
+  const dmaIdx=new Map(),dmas=[];for(const v of order){const d=DMA[v];if(NET.dmas[d]&&!dmaIdx.has(d)){dmaIdx.set(d,dmas.length);dmas.push(d);}}
+  const R=RES.length,F=facs.length,Dn=dmas.length,T=R+F+Dn;const vec=new Float32Array(order.length*T);
+  for(let p=0;p<order.length;p++){const v=order[p],base=p*T;
+    if(NT[v]===1)vec[base+resIdx[v]]=1;
+    else{let tot=0;for(let k=ADJS[v];k<ADJS[v+1];k++){const l=ADJ[k];const dir=flowDir(l,h);if(!dir)continue;const from=dir>0?N1[l]:N2[l],to=dir>0?N2[l]:N1[l];if(to!==v)continue;const pu=pos[from];if(pu<0||pu>=p)continue;
+        const w=Math.abs(Qh(h,l));tot+=w;const bu=pu*T;for(let t=0;t<T;t++)vec[base+t]+=w*vec[bu+t];const fi=facIdx.get(l);if(fi!==undefined)vec[base+R+fi]+=w*(1-vec[bu+R+fi]);}
+      if(tot>0)for(let t=0;t<T;t++)vec[base+t]/=tot;}
+    if(NET.dmas[DMA[v]])vec[base+R+F+dmaIdx.get(DMA[v])]=1;}
+  const share=i=>{let s=0;for(const tg of targets)s+=vec[pos[tg]*T+i];return s/targets.length;};
+  const links=new Map();const mx=Math.max(1,...upLinks.map(l=>Math.abs(Qh(h,l))));
+  for(const l of upLinks){const dir=flowDir(l,h);const from=dir>0?N1[l]:N2[l];const b=pos[from]*T;let bi=0,bv=-1;for(let r=0;r<R;r++)if(vec[b+r]>bv){bv=vec[b+r];bi=r;}
+    const w=1.4+1.6*Math.log1p(Math.abs(Qh(h,l)))/Math.log1p(mx);links.set(l,TMODE==="sel"?{c:css("--sel"),w:3.5}:{c:SRC_COL[bi%SRC_COL.length],w});}
+  const srcs=[];for(let r=0;r<R;r++){const v=share(r);if(v>0.001)srcs.push({r,v});}srcs.sort((a,b)=>b.v-a.v);
+  const fl=[];for(let f=0;f<F;f++){const v=share(R+f);if(v>=0.005)fl.push({l:facs[f],v});}
+  const facOrder=l=>{const dir=flowDir(l,h);return pos[dir>0?N1[l]:N2[l]];};fl.sort((a,b)=>facOrder(a.l)-facOrder(b.l));
+  const dl=[];for(let d=0;d<Dn;d++){const v=share(R+F+d);if(v>=0.005)dl.push({d:dmas[d],v});}
+  const firstPos=new Map();for(const v of order)if(!firstPos.has(DMA[v]))firstPos.set(DMA[v],pos[v]);dl.sort((a,b)=>firstPos.get(a.d)-firstPos.get(b.d));
+  let plen=0;for(const l of upLinks)plen+=LEN[l];
+  OV={links,nodes:new Map(),pins:targets.slice(0,20).map(t=>({x:X[t],y:Y[t],c:"#e0119d",label:targets.length===1?"대상 지점":""}))};
+  setLegend(TMODE==="sel"?[{c:css("--sel"),t:"급수원 선택 (상류 관망)"}]:srcs.slice(0,6).map(s=>({c:SRC_COL[s.r%SRC_COL.length],t:resName(RES[s.r])})));
+  const t0=targets[0];const multi=targets.length>1;
+  const html=segHtml("급수원별 색")+`
+   <div class="kv">${multi?`<div><span>대상 지점</span><b>${targets.length}곳 (평균)</b></div>`:`<div><span>대상 절점</span><b>${esc(NET.nodes.id[t0])}</b></div><div><span>소블록</span><b>${esc(NET.dmas[DMA[t0]]||"–")}</b></div><div><span>수압</span><b>${fmt(Ph(h,t0),1)} m</b></div>`}
+   <div><span>상류 관로</span><b>${fmt(plen/1000,1)} km · ${fmt(upLinks.length)}개</b></div></div>
+   ${srcs.length?"":`<div class="callout warn">${hh2(h)}:00에 이 지점으로 흐르는 유량이 없습니다(정체 또는 폐쇄 구역).</div>`}
+   <h3>급수원 구성</h3>
+   <div class="tbl"><table><thead><tr><th>급수원</th><th>구분</th><th class="r">기여율</th><th></th></tr></thead><tbody>
+   ${srcs.map(s=>`<tr class="click" data-n="${RES[s.r]}"><td><span class="sw" style="background:${SRC_COL[s.r%SRC_COL.length]}"></span>${esc(resName(RES[s.r]))}</td><td><span class="tag res">${resKind(RES[s.r])}</span></td><td class="r num">${fmt(s.v*100,1)}%</td><td style="width:30%"><div class="bar"><i style="width:${(s.v*100).toFixed(1)}%;background:${SRC_COL[s.r%SRC_COL.length]}"></i></div></td></tr>`).join("")}</tbody></table></div>
+   <h3>경유 시설 (상류 → 하류)</h3>
+   ${fl.length?`<div class="tbl"><table><thead><tr><th>#</th><th>시설</th><th>구분</th><th class="r">통과 비율</th><th class="r">유량 m³/일</th><th class="r">설정</th></tr></thead><tbody>
+   ${fl.map((f,i)=>`<tr class="click" data-l="${f.l}"><td class="num">${i+1}</td><td>${esc(linkName(f.l))}</td><td>${tagFor(f.l)}</td><td class="r num">${fmt(f.v*100,0)}%</td><td class="r num">${fmt(Math.abs(Qh(h,f.l)),0)}</td><td class="r num">${LT[f.l]===3?fmt(NET.links.set[f.l],0)+" m":"–"}</td></tr>`).join("")}</tbody></table></div>`:`<p class="note">가압장·감압밸브·경계밸브를 거치지 않고 급수원에서 바로 공급됩니다.</p>`}
+   <h3>경유 소블록 (상류 → 하류)</h3>
+   <div class="tbl"><table><thead><tr><th>소블록</th><th class="r">통과 비율</th><th></th></tr></thead><tbody>
+   ${dl.map(d=>`<tr class="click" data-d="${d.d}"><td>${esc(NET.dmas[d.d])}</td><td class="r num">${fmt(d.v*100,0)}%</td><td style="width:35%"><div class="bar"><i style="width:${(d.v*100).toFixed(0)}%;background:var(--accent)"></i></div></td></tr>`).join("")}</tbody></table></div>
+   <p class="note">${TMODE==="sel"?"빨간 선은 선택 지점으로 물이 흘러오는 상류 관망입니다(GIS PIPE 급수원 선택 방식).":"선 색은 각 관로에 가장 많이 섞인 급수원입니다."} 비율은 ${hh2(h)}:00 EPANET 해석 유량 기준입니다.</p>`;
+  openSheet("급수원 선택",`${hh2(h)}:00 · ${srcs.map(s=>resName(RES[s.r])+" "+fmt(s.v*100,0)+"%").slice(0,3).join(" · ")||"유입 없음"}`,html);
+  wireRows();wireSeg();fitNodes(order.length>1?order:targets);}
+
+/* ============ 급수구역 (하류) ============ */
+function downFracMulti(srcs,h){const state=new Uint8Array(NN),post=[];
+  for(const s0 of srcs){if(state[s0])continue;const stack=[s0],it=[ADJS[s0]];state[s0]=1;
+    while(stack.length){const v=stack[stack.length-1];let k=it[it.length-1];let pushed=false;
+      for(;k<ADJS[v+1];k++){const l=ADJ[k];const dir=flowDir(l,h);if(!dir)continue;const from=dir>0?N1[l]:N2[l],to=dir>0?N2[l]:N1[l];if(from!==v)continue;
+        if(state[to]===0){state[to]=1;it[it.length-1]=k+1;stack.push(to);it.push(ADJS[to]);pushed=true;break;}}
+      if(!pushed){post.push(v);stack.pop();it.pop();}}}
+  const topo=post.reverse();const rank=new Int32Array(NN).fill(-1);topo.forEach((v,i)=>rank[v]=i);const f=new Float32Array(NN);const isSrc=new Set(srcs);for(const s0 of srcs)f[s0]=1;const dl=[];
+  for(let i=0;i<topo.length;i++){const v=topo[i];if(isSrc.has(v))continue;let tot=0,acc=0;for(let k=ADJS[v];k<ADJS[v+1];k++){const l=ADJ[k];const dir=flowDir(l,h);if(!dir)continue;const from=dir>0?N1[l]:N2[l],to=dir>0?N2[l]:N1[l];if(to!==v)continue;
+      const w=Math.abs(Qh(h,l));tot+=w;if(rank[from]>=0&&rank[from]<i){acc+=w*f[from];if(f[from]>0)dl.push(l);}}f[v]=tot>0?acc/tot:0;}
+  return {f,topo,rank,dl};}
+function traceDown(){const srcs=downSources();if(!srcs.length){openChapter("sel");return;}const h=HOUR;
+  const {f:hfrac,topo,rank,dl:dlinks}=downFracMulti(srcs,h);
+  const byD=new Map();let supply=0,full=0,part=0,meters=0;
+  for(const v of topo){const fr=hfrac[v];if(fr<0.01)continue;const dd=Math.max(0,Dh(h,v));supply+=dd*fr;fr>0.99?full++:part++;if(CN&&fr>=0.5)meters+=CN[v];const k=DMA[v];let o=byD.get(k);if(!o){o={d:k,q:0,n:0,len:0,m:0,first:rank[v]};byD.set(k,o);}o.q+=dd*fr;o.n++;if(CN&&fr>=0.5)o.m+=CN[v];}
+  for(const l of dlinks){const k=DMA[flowDir(l,h)>0?N2[l]:N1[l]];const o=byD.get(k);if(o)o.len+=LEN[l];}
+  const rows=[...byD.values()].sort((a,b)=>a.first-b.first);
+  const fac=[];const seen=new Set();for(const l of dlinks){if((LT[l]===2||LT[l]===3)&&!seen.has(l)){seen.add(l);fac.push(l);}}
+  const links=new Map();const mx=Math.max(1,...dlinks.map(l=>Math.abs(Qh(h,l))));
+  for(const l of dlinks){const to=flowDir(l,h)>0?N2[l]:N1[l];const fr=hfrac[to];if(fr<0.01)continue;const w=1.4+1.6*Math.log1p(Math.abs(Qh(h,l)))/Math.log1p(mx);links.set(l,TMODE==="sel"?{c:css("--sel"),w:3.5}:{c:hueCol(DMA[to],0.35+0.65*fr),w});}
+  OV={links,nodes:new Map(),pins:srcs.slice(0,20).map(t=>({x:X[t],y:Y[t],c:"#e0119d",label:srcs.length===1?"공급 시작점":""}))};
+  setLegend(TMODE==="sel"?[{c:css("--sel"),t:"급수구역 선택 (하류 관망)"}]:rows.slice(0,6).map(r=>({c:hueCol(r.d),t:NET.dmas[r.d]||"블록 미지정"})));
+  const html=segHtml("소블록별 색")+`
+   <div class="kv"><div><span>시작 지점</span><b>${srcs.length===1?esc(NET.nodes.id[srcs[0]]):srcs.length+"곳"}</b></div><div><span>공급 수량</span><b>${fmt(supply,0)} m³/일</b></div>
+   <div><span>공급 수용가</span><b>${CN?fmt(meters)+" 개":"…"}</b></div><div><span>공급 소블록</span><b>${rows.filter(r=>NET.dmas[r.d]).length}개</b></div>
+   <div><span>전량 공급 절점</span><b>${fmt(full)}</b></div><div><span>일부 공급 절점</span><b>${fmt(part)}</b></div></div>
+   ${topo.length<=srcs.length?`<div class="callout warn">${hh2(h)}:00에 이 지점에서 나가는 유량이 없습니다(말단 또는 정체 구간).</div>`:""}
+   <h3>공급 소블록</h3>
+   <div class="tbl"><table><thead><tr><th>소블록</th><th class="r">공급량 m³/일</th><th class="r">수용가</th><th class="r">관로 km</th></tr></thead><tbody>
+   ${rows.map(r=>`<tr class="click" data-d="${r.d}"><td><span class="sw" style="background:${hueCol(r.d)}"></span>${esc(NET.dmas[r.d]||"블록 미지정")}</td><td class="r num">${fmt(r.q,0)}</td><td class="r num">${CN?fmt(r.m):"…"}</td><td class="r num">${fmt(r.len/1000,2)}</td></tr>`).join("")}</tbody></table></div>
+   <h3>하류 가압장·감압밸브</h3>
+   ${fac.length?`<div class="tbl"><table><thead><tr><th>시설</th><th>구분</th><th class="r">유량 m³/일</th></tr></thead><tbody>${fac.map(l=>`<tr class="click" data-l="${l}"><td>${esc(linkName(l))}</td><td>${tagFor(l)}</td><td class="r num">${fmt(Math.abs(Qh(h,l)),0)}</td></tr>`).join("")}</tbody></table></div>`:`<p class="note">하류에 가압장·감압밸브가 없습니다.</p>`}
+   <p class="note">${TMODE==="sel"?"빨간 선은 선택 지점의 물이 흘러가는 하류 관망입니다(GIS PIPE 급수구역 선택 방식).":"선 색은 소블록, 진하기는 시작점에서 온 물의 비율입니다."} 공급 수용가는 시작점 물이 절반 이상인 절점의 수도미터 수입니다.</p>`;
+  openSheet("급수구역 선택",`${hh2(h)}:00 · ${fmt(supply,0)} m³/일 · ${rows.length}개 블록`,html);
+  wireRows();wireSeg();fitNodes(topo.filter(v=>hfrac[v]>=0.01));}
+
+/* ============ 수리계산 엔진 ============ */
+const ENG={st:"idle",w:null,seq:0,pend:new Map(),base:new Map(),p:null};
+function setEng(st,txt){ENG.st=st;$("#engDot").className="dot "+(st==="ready"?"ready":st==="loading"||st==="busy"?"busy":st==="failed"?"fail":"");$("#engTxt").textContent=txt;}
+function ensureEngine(){if(ENG.p)return ENG.p;setEng("loading","엔진 준비 중");
+  ENG.p=(async()=>{const buf=await fetchGz("sim.inp.gz.txt");const inp=new TextDecoder().decode(buf);
+    const w=new Worker("engine.js");ENG.w=w;w.onmessage=e=>{const p=ENG.pend.get(e.data.id);if(p){ENG.pend.delete(e.data.id);e.data.ok?p.res(e.data.r):p.rej(new Error(e.data.error));}};
+    w.onerror=()=>{for(const p of ENG.pend.values())p.rej(new Error("엔진 오류"));ENG.pend.clear();};
+    await call("init",{inp,topo:{nn:NN,nl:NL,n1:Array.from(N1),n2:Array.from(N2),init:Array.from(INIT),nt:Array.from(NT)}},90000);
+    setEng("ready","EPANET 준비됨");return true;})().catch(err=>{console.warn(err);setEng("failed","엔진 사용 불가");ENG.p=Promise.resolve(false);return false;});
+  return ENG.p;}
+function call(type,payload,timeout=60000){return new Promise((res,rej)=>{const id=++ENG.seq;ENG.pend.set(id,{res,rej});ENG.w.postMessage({type,id,...payload});setTimeout(()=>{if(ENG.pend.has(id)){ENG.pend.delete(id);rej(new Error("시간 초과"));}},timeout);});}
+async function solve(args){return call("solve",{args});}
+async function baseAt(h){if(!ENG.base.has(h))ENG.base.set(h,await solve({hour:h}));return ENG.base.get(h);}
+$("#chipEngine").onclick=()=>{if(ENG.st==="idle"||ENG.st==="failed"){ENG.p=null;ensureEngine();}CUR=null;renderTabs();openSheet("수리계산 엔진",ENG.st==="ready"?"EPANET 2.2 (WebAssembly) 준비됨":ENG.st==="failed"?"이 기기에서 실행할 수 없음":"준비 중",
+  `<p class="note">단수 시뮬레이션은 휴대폰 안에서 EPANET 2.2 엔진으로 정상류 해석을 합니다. 한 번 계산에 보통 0.5~3초가 걸립니다.</p><p class="note">급수원·급수구역은 미리 계산한 시간대별(00~23시) 해석 유량을 씁니다.</p>`,"half");};
+function connectivity(isOpen){const seen=new Uint8Array(NN),st=[];for(const r of RES){seen[r]=1;st.push(r);}
+  while(st.length){const v=st.pop();for(let k=ADJS[v];k<ADJS[v+1];k++){const l=ADJ[k];if(!isOpen(l))continue;const w=N1[l]===v?N2[l]:N1[l];if(!seen[w]){seen[w]=1;st.push(w);}}}return seen;}
+
+/* ============ 수용가(수도미터) ============ */
+let CU=null,CN=null,CS=null,CI=null;
+async function loadCust(){try{const buf=await fetchGz("cust.json.gz.txt");CU=JSON.parse(new TextDecoder().decode(buf));
+  CN=new Int32Array(NN);for(const n of CU.n)CN[n]++;CS=new Int32Array(NN+1);for(let i=0;i<NN;i++)CS[i+1]=CS[i]+CN[i];
+  const pos=CS.slice(0,NN);CI=new Int32Array(CU.n.length);for(let k=0;k<CU.n.length;k++)CI[pos[CU.n[k]]++]=k;
+  buildAddrIndex();if(CUR)openChapter(CUR,true);}catch(e){console.warn("수용가 자료",e);}}
+const mCount=nodes=>{if(!CN)return null;let s=0;for(const i of nodes)s+=CN[i];return s;};
+const mtxt=v=>v==null?"…":fmt(v);
+function custRows(nodes){const out=[];if(!CU)return out;for(const n of nodes)for(let j=CS[n];j<CS[n+1];j++)out.push([CI[j],n]);return out;}
+function custTable(rows,max,tagOf){if(CU.pub)return pubCustTable(rows);return `<div class="tbl"><table><thead><tr>${tagOf?"<th>구분</th>":""}<th>주소</th><th>수도미터</th><th class="r">구경</th><th>업종</th><th>소블록</th></tr></thead><tbody>${rows.slice(0,max).map(([k,n])=>`<tr class="click" data-n="${n}">${tagOf?`<td>${tagOf(n)}</td>`:""}<td style="min-width:150px">${esc(CU.a[k]||(CU.id[k]?"상세정보 없음 · 고객번호 "+CU.id[k]:"상세정보 없음"))}${(CU.b&&CU.b[k])||(CU.v&&CU.v[k])?`<br><b style="font-size:12.5px;color:#2b5fb4">${esc([CU.v&&CU.v[k],CU.b&&CU.b[k]].filter(Boolean).join(" · "))}</b>`:""}</td><td class="num" style="white-space:nowrap">${esc(CU.mt[k]||"–")}</td><td class="r num">${CU.dia[k]||"–"}</td><td style="white-space:nowrap">${CU.u[k]>=0?esc(CU.uses[CU.u[k]]):"–"}</td><td style="white-space:nowrap">${esc(NET.dmas[DMA[n]]||"")}</td></tr>`).join("")}</tbody></table></div>${rows.length>max?`<p class="note">상위 ${max}건만 표시 · 전체 ${fmt(rows.length)}건은 CSV로 저장하세요.</p>`:""}`;}
+function pubCustTable(rows){const by=new Map();for(const [k,n] of rows){const d=DMA[n];by.set(d,(by.get(d)||0)+1);}return `<div class="tbl"><table><thead><tr><th>소블록</th><th class="r">수도미터</th></tr></thead><tbody>${[...by].sort((a,b)=>b[1]-a[1]).map(([d,c])=>`<tr class="click" data-d="${d}"><td>${esc(NET.dmas[d]||"블록 미지정")}</td><td class="r num">${fmt(c)}</td></tr>`).join("")}</tbody></table></div><p class="note">공개판에는 개인정보 보호를 위해 수용가별 주소·미터번호가 들어 있지 않습니다.</p>`;}
+async function saveCsv(rows,name,tagOf){if(CU.pub){toast("공개판에서는 수용가 목록을 저장할 수 없습니다.");return;}const head=(CU.pubid?"구분,":"구분,고객번호,")+"수도미터번호,구경,업종,가구수,급수상태,주소,상호,건물명,소블록,절점\n";
+  const body=rows.map(([k,n])=>[tagOf?tagOf(n,true):"",...(CU.pubid?[]:[CU.id[k]]),CU.mt[k],CU.dia[k]||"",CU.u[k]>=0?CU.uses[CU.u[k]]:"",CU.hh[k]||"",CU.s[k]>=0?CU.sts[CU.s[k]]:"",CU.a[k],CU.b?CU.b[k]:"",CU.v?CU.v[k]:"",NET.dmas[DMA[n]]||"",NET.nodes.id[n]].map(v=>`"${String(v??"").replace(/"/g,'""')}"`).join(",")).join("\n");
+  const data="﻿"+head+body;
+  if(!window.claude){try{const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([data],{type:"text/csv"}));a.download=name;document.body.appendChild(a);a.click();a.remove();toast("저장했습니다.");return;}catch(e){}}
+  try{const dl=window.claude&&await window.claude.use("downloads");if(dl){await dl.save({filename:name,data});toast("저장했습니다.");return;}}catch(e){if(e&&e.code==="declined")return;}
+  try{await navigator.clipboard.writeText(data.slice(1));toast("파일 저장이 안 되는 환경이라 목록을 클립보드에 복사했습니다.",4200);}catch(e){toast("저장할 수 없는 환경입니다.");}}
+
+const pct=(a,b)=>b?fmt(100*a/b,0)+"%":"–";let EDIT=false;function setEdit(){}
+$("#chipSim").onclick=()=>openChapter("cut");
+/* ============ 단수 (연결성 기준) ============ */
+let SC=null;let BASECONN=null;let FLOWDETAIL=false;
+function scStatus(l){if(SC){if(SC.closed.includes(l))return 0;if(SC.opened.includes(l)||SC.preview===l)return 1;}return INIT[l]===0?0:1;}
+function isOpenFn(closed,opened){const c=new Set(closed),o=new Set(opened);return l=>c.has(l)?false:o.has(l)?true:INIT[l]!==0;}
+function baseConn(){if(!BASECONN)BASECONN=connectivity(l=>INIT[l]!==0);return BASECONN;}
+function cutSet(closed,opened){const b=baseConn(),c=connectivity(isOpenFn(closed,opened));const out=[];for(let i=0;i<NN;i++)if(NT[i]===0&&b[i]&&!c[i])out.push(i);return {conn:c,cutN:out};}
+function computeCut(){const closed=selAsCut();if(!closed.length)return null;const key=closed.join(",");if(SC&&SC.key===key)return SC;
+  const {conn,cutN}=cutSet(closed,[]);SC={key,closed,cutN,conn,opened:[],preview:null,cands:null,q:{},after:null};$("#chipSim").classList.add("on");return SC;}
+function afterState(){if(!SC)return null;const op=[...SC.opened];if(SC.preview!=null)op.push(SC.preview);const key=op.join(",");if(SC.after&&SC.after.key===key)return SC.after;
+  const {conn,cutN}=cutSet(SC.closed,op);SC.after={key,op,conn,cutN};return SC.after;}
+function cutSummary(nodes){const by=new Map();let dem=0;const h=HOUR;for(const i of nodes){const dd=Math.max(0,Dh(h,i));dem+=dd;let o=by.get(DMA[i]);if(!o){o={d:DMA[i],n:0,m:0,dem:0};by.set(DMA[i],o);}o.n++;o.dem+=dd;if(CN)o.m+=CN[i];}
+  return {dem,rows:[...by.values()].sort((a,b)=>b.m-a.m||b.dem-a.dem),meters:mCount(nodes)};}
+/* 지도 표시: 단수=빨강, 회복=초록 (얇게), 조작 지점은 작은 표식 + 이름표 */
+function opTags(closed,opens,numbered){const t=[];closed.forEach(l=>{const [x,y]=linkMid(l);t.push({x,y,kind:"x",text:"잠금"});});
+  opens.forEach((l,i)=>{const [x,y]=linkMid(l);t.push({x,y,kind:"o",text:numbered?`열기 ${i+2}`:"열기"});});return t;}
+function ovCut(nodes,recovered,closed,opens){const cutC=css("--cut"),okC=css("--ok");const st=new Uint8Array(NN);for(const i of nodes)st[i]=1;if(recovered)for(const i of recovered)st[i]=2;
+  const links=new Map();for(let l=0;l<NL;l++){const a=st[N1[l]],b=st[N2[l]];if(!a&&!b)continue;links.set(l,{c:(a===2||b===2)?okC:cutC,w:2.6});}
+  const meters=new Map();if(layers.meters&&CN)for(let i=0;i<NN;i++)if(st[i]&&CN[i])meters.set(i,{n:CN[i],c:st[i]===2?okC:cutC});
+  return {links,nodes:new Map(),pins:[],meters,tags:opTags(closed||[],opens||[],true)};}
+function openCut(){const sc=computeCut();SPLIT=null;
+  if(!sc){OV=null;setLegend(null);openSheet("단수","관로를 선택하세요",`<p class="note">지도에서 사고 관로(또는 밸브·절점)를 한 번 눌러 선택한 뒤 이 탭을 누르면, 그 지점이 끊겼을 때 단수되는 범위를 보여줍니다.</p>`);return;}
+  const S=cutSummary(sc.cutN);OV=ovCut(sc.cutN,null,sc.closed,[]);
+  setLegend([{c:css("--cut"),t:"단수 구역"},{c:css("--cut"),t:"✕ 잠금(사고 지점)",round:true}]);
+  const where=SELN.length?(SELN[0].t==="l"?linkName(SELN[0].i):"절점 "+NET.nodes.id[SELN[0].i]+" (연결 관로 "+sc.closed.length+"개)"):"";
+  openSheet("단수",`${esc(where)} 차단 시`,`
+   <div class="bigstat"><span>단수 수용가</span><b style="color:var(--cut)">${mtxt(S.meters)}</b><em>개</em></div>
+   <div class="kv"><div><span>단수 절점</span><b>${fmt(sc.cutN.length)}</b></div><div><span>영향 수요량</span><b>${fmt(S.dem,0)} m³/일</b></div><div><span>영향 소블록</span><b>${S.rows.length}개</b></div></div>
+   ${sc.cutN.length?"":`<div class="callout good">이 관로가 끊겨도 다른 관로로 물이 들어가서 단수되는 곳이 없습니다.</div>`}
+   ${S.rows.length?`<div class="tbl"><table><thead><tr><th>소블록</th><th class="r">단수 수용가</th><th class="r">수요량 m³/일</th></tr></thead><tbody>${S.rows.map(r=>`<tr class="click" data-d="${r.d}"><td>${esc(NET.dmas[r.d]||"블록 미지정")}</td><td class="r num">${CN?fmt(r.m):"…"}</td><td class="r num">${fmt(r.dem,0)}</td></tr>`).join("")}</tbody></table></div>`:""}
+   <div class="actions">${sc.cutN.length?`<button class="btn pri" data-go="link">비상연계 찾기 →</button><button class="btn" data-go="cust">단수 수용가 목록</button>`:""}<button class="btn" data-go="flush">복구 후 이토 지점</button></div>
+   <p class="note">선택한 관로가 끊겼을 때 어느 급수원과도 이어지지 않는 곳을 단수로 봅니다. 다른 관로로 물이 들어갈 수 있는 곳은 단수가 아닙니다.</p>`);
+  $("#shBody").querySelectorAll("[data-go]").forEach(b=>b.onclick=()=>openChapter(b.dataset.go));wireRows();
+  if(sc.cutN.length)fitNodes(sc.cutN,60);else{const [x,y]=linkMid(sc.closed[0]);flyTo(x,y,Math.max(view.s,0.3));}redraw();}
+
+/* ============ 비상연계 ============ */
+function findCands(){const sc=SC;const cur=cutSet(sc.closed,sc.opened);const rem=new Uint8Array(NN);for(const i of cur.cutN)rem[i]=1;const out=[];
+  let cx0=0,cy0=0;for(const l of sc.closed){const [x,y]=linkMid(l);cx0+=x/sc.closed.length;cy0+=y/sc.closed.length;}
+  for(let l=0;l<NL;l++){if(INIT[l]!==0||sc.opened.includes(l)||sc.closed.includes(l))continue;const a=N1[l],b=N2[l];
+    if(!((rem[a]&&cur.conn[b])||(rem[b]&&cur.conn[a])))continue;
+    const c=connectivity(isOpenFn(sc.closed,[...sc.opened,l]));const rec=cur.cutN.filter(i=>c[i]);if(!rec.length)continue;const [x,y]=linkMid(l);
+    out.push({l,rec,m:mCount(rec)??rec.length,d:Math.hypot(x-cx0,y-cy0),valve:LT[l]===7?1:0});}
+  // 같은 효과면: 경계밸브 우선 → 관경 큰 것 → 사고 지점에서 가까운 것
+  out.sort((x,y)=>y.m-x.m||y.valve-x.valve||DIA[y.l]-DIA[x.l]||x.d-y.d);sc.cands=out.slice(0,15);sc.remain=cur.cutN;}
+function addrNear(l){if(!CU)return "";const [x,y]=linkMid(l);const n=nearestNode(x,y,200);if(n<0)return "";for(let j=CS[n];j<CS[n+1];j++){const k=CI[j];const a=CU.r[k]||CU.j[k];if(a)return a+" 부근";}
+  let best="",bd=1e18;for(let dx=-1;dx<=1;dx++){} return best;}
+function openLink(){const sc=computeCut();if(!sc||!sc.cutN.length){SPLIT=null;openSheet("비상연계","",`<p class="note">먼저 단수 탭에서 단수 구역이 생기는 관로를 선택하세요.</p>`);return;}
+  if(!sc.cands)findCands();if(sc.preview==null&&sc.cands.length&&!sc.opened.length)sc.preview=sc.cands[0].l;
+  const A=afterState();const rec=sc.cutN.filter(i=>A.conn[i]);const mB=mCount(sc.cutN),mA=mCount(A.cutN);
+  const ovB=ovCut(sc.cutN,null,sc.closed,[]);const ovA=ovCut(A.cutN,rec,sc.closed,A.op);
+  SPLIT={ov:[ovB,ovA],labels:["① 연계 전",`② 연계 후`],sub:[`단수 ${mtxt(mB)}개`,`단수 ${mtxt(mA)}개`],flow:[null,null]};
+  OV=ovA;setLegend([{c:css("--cut"),t:"단수"},{c:css("--ok"),t:"연계로 회복"}]);
+  const cs=sc.cands;const rec0=cs[0];const others=cs.slice(1);
+  const step=(n,kind,l,extra)=>`<div class="opstep ${kind}"><span class="no">${n}</span><span class="act">${kind==="x"?"잠금":"열기"}</span><span class="nm"><b>${esc(linkName(l))}</b><small>D${fmt(DIA[l])}${extra?" · "+esc(extra):""}</small></span><button class="btn mini" data-loc="${l}">위치</button></div>`;
+  const ops=[...sc.closed.map((l,i)=>step(i+1,"x",l,i===0?"사고 지점":"")),...A.op.map((l,i)=>step(sc.closed.length+i+1,"o",l,addrNear(l)))];
+  openSheet("비상연계",`단수 수용가 ${mtxt(mB)} → ${mtxt(mA)}개`,`
+   <div class="opcard"><div class="ophead">밸브 조작 순서</div>${ops.join("")}
+    <div class="opres">단수 수용가 <b style="color:var(--cut)">${mtxt(mB)}</b> → <b style="color:var(--ok)">${mtxt(mA)}</b>개${mB&&mA!=null?` <small>(${pct(mB-mA,mB)} 감소)</small>`:""}</div>
+    ${sc.preview!=null?`<div class="actions" style="margin:8px 0 0"><button class="btn pri" id="lkApply">이 밸브로 확정</button>${sc.opened.length?"":`<span class="note" style="margin:0">확정하면 남은 단수 구역에 대해 다음 밸브를 더 찾을 수 있습니다.</span>`}</div>`:""}
+    ${sc.opened.length?`<div class="actions" style="margin:8px 0 0"><button class="btn" id="lkUndo">마지막 밸브 취소</button></div>`:""}
+   </div>
+   <p class="note" id="lkFlow"></p>
+   ${others.length||(!rec0&&!sc.opened.length)?`<details class="alt"><summary>${rec0?`다른 밸브 ${others.length}개 보기`:"열 수 있는 밸브"}</summary>
+    ${cs.length?`<div class="tbl"><table><thead><tr><th>밸브·관로</th><th class="r">회복 수용가</th><th></th></tr></thead><tbody>
+    ${cs.map((c,i)=>`<tr class="click${sc.preview===c.l?" sel":""}" data-c="${i}"><td>${i===0?'<span class="tag tcv">추천</span> ':""}${esc(linkName(c.l))}<br><span class="note num" style="margin:0">D${fmt(DIA[c.l])}</span></td><td class="r num" style="color:var(--ok)">${fmt(c.m)}</td><td><button class="btn mini" data-pv="${i}">보기</button></td></tr>`).join("")}</tbody></table></div>`:`<div class="callout warn">단수 구역과 바로 이어진 닫힌 경계밸브·폐쇄관로가 없습니다.</div>`}</details>`:""}
+   ${!cs.length&&sc.opened.length?`<p class="note">더 열 수 있는 밸브로는 남은 단수 구역을 살릴 수 없습니다.</p>`:""}
+   <div class="actions"><button class="btn" data-go="flow">물 흐름 보기 ▶</button><button class="btn" data-go="cust">수용가 목록</button></div>`,"half");
+  const B=$("#shBody");
+  B.querySelectorAll("[data-pv],tr.click[data-c]").forEach(el=>el.onclick=e=>{e.stopPropagation();const i=+(el.dataset.pv??el.dataset.c);sc.preview=cs[i].l;openLink();});
+  $("#lkApply")&&($("#lkApply").onclick=()=>{sc.opened.push(sc.preview);sc.preview=null;sc.cands=null;openLink();});
+  $("#lkUndo")&&($("#lkUndo").onclick=()=>{sc.opened.pop();sc.preview=null;sc.cands=null;openLink();});
+  B.querySelectorAll("[data-loc]").forEach(b=>b.onclick=()=>{const l=+b.dataset.loc;const [x,y]=linkMid(l);view.cx=x;view.cy=y;view.s=Math.max(view.s,0.6);redraw();});
+  B.querySelectorAll("[data-go]").forEach(b=>b.onclick=()=>openChapter(b.dataset.go));
+  fitSplitOps(sc.cutN,[...sc.closed,...A.op]);redraw();linkFlows();}
+function fitSplitOps(ns,ls){let a=1e18,b=1e18,c=-1e18,d=-1e18;const add=(x,y)=>{a=Math.min(a,x);c=Math.max(c,x);b=Math.min(b,y);d=Math.max(d,y);};for(const i of ns)add(X[i],Y[i]);for(const l of ls){const [x,y]=linkMid(l);add(x,y);}if(a>1e17)return;
+  const v=halves()[1];const pad=30;view.s=Math.min(4,(v.w-pad*2)/Math.max(30,c-a),(v.h-pad*2-40)/Math.max(30,d-b));view.cx=(a+c)/2;view.cy=(b+d)/2+20/view.s;redraw();}
+function fitSplit(ns){fitSplitOps(ns,[]);}
+async function linkFlows(){const sc=SC;if(!sc)return;const A=afterState();
+  const ok=await ensureEngine();if(!ok||!SPLIT||SC!==sc)return;
+  try{if(!sc.q.cut||sc.q.cutH!==HOUR){sc.q.cut=(await solve({hour:HOUR,closed:sc.closed,opened:[]})).q;sc.q.cutH=HOUR;}
+    const ra=await solve({hour:HOUR,closed:sc.closed,opened:A.op});if(!SPLIT||SC!==sc||afterState().key!==A.key)return;
+    const qb=sc.q.cut,qa=ra.q;const set=flowSet([qb,qa],[...sc.cutN]);
+    SPLIT.flow=[{set,q:qb,p:null},{set,q:qa,p:qb}];
+    let fl=0;for(const l of A.op)fl+=Math.abs(qa[l]);
+    const e=$("#lkFlow");if(e)e.innerHTML=A.op.length?`여는 밸브로 들어가는 물: <b>${fmt(fl,0)} m³/일</b> · 지도의 움직이는 점선이 물 흐르는 방향입니다.`:"";
+    needDraw=true;}catch(err){console.warn(err);}}
+
+/* ============ 물 흐름 (평상시 → 단수 → 연계) ============ */
+const FCOL={same:"#1556b8",rev:"#c0168a",start:"#0f9a4a",stop:"#9a9a9a"};const FT=0.5;
+function flowSet(qs,area){const set=new Uint8Array(NL);const aff=new Uint8Array(NN);for(const i of area)aff[i]=1;
+  for(let l=0;l<NL;l++){let any=false,chg=false;for(let k=0;k<qs.length;k++){const q=qs[k][l];if(Math.abs(q)>FT)any=true;if(k){const p=qs[k-1][l];const a=Math.abs(p)>FT,c=Math.abs(q)>FT;
+      if(a!==c||(a&&c&&Math.sign(p)!==Math.sign(q))||(a&&c&&Math.abs(q-p)>Math.max(2,0.25*Math.abs(p))))chg=true;}}
+    if(any&&(chg||aff[N1[l]]||aff[N2[l]]))set[l]=1;}return set;}
+function flowStats(set,p,q){let rev=0,start=0,stop=0;for(let l=0;l<NL;l++){if(!set[l])continue;const a=Math.abs(p[l])>FT,c=Math.abs(q[l])>FT;if(a&&c&&Math.sign(p[l])!==Math.sign(q[l]))rev++;else if(!a&&c)start++;else if(a&&!c)stop++;}return {rev,start,stop};}
+async function openFlow(){const sc=computeCut();SPLIT=null;
+  if(!sc||!sc.cutN.length){openSheet("물 흐름","",`<p class="note">먼저 단수 탭에서 단수 구역이 생기는 관로를 선택하세요.</p>`);return;}
+  openSheet("물 흐름","계산 중…",`<p class="note">평상시·단수·연계 상태의 흐름을 계산하고 있습니다…</p>`);
+  const ok=await ensureEngine();if(!ok){openSheet("물 흐름","",`<p class="note">이 기기에서 수리계산 엔진을 쓸 수 없어 흐름을 계산하지 못했습니다.</p>`);return;}
+  const h=HOUR;const b=await baseAt(h);if(!sc.q.cut||sc.q.cutH!==h){sc.q.cut=(await solve({hour:h,closed:sc.closed,opened:[]})).q;sc.q.cutH=h;}
+  const A=afterState();const phases=[{name:"① 평상시",sub:"사고 전",q:b.q,cut:[],rec:null,op:[]},{name:"② 단수",sub:sc.closed.map(linkName).join(", ")+" 잠금",q:sc.q.cut,cut:sc.cutN,rec:null,op:[]}];
+  if(A.op.length){const ra=await solve({hour:h,closed:sc.closed,opened:A.op});phases.push({name:"③ 비상연계",sub:A.op.map(linkName).join(", ")+" 열기",q:ra.q,cut:A.cutN,rec:sc.cutN.filter(i=>A.conn[i]),op:A.op});}
+  if(CUR!=="flow")return;
+  const set=flowSet(phases.map(p=>p.q),sc.cutN);const stats=phases.map((ph,k)=>k?flowStats(set,phases[k-1].q,ph.q):null);
+  FLOW={phases,idx:0,play:true,anim:true,set,stats,last:performance.now(),sc};
+  renderFlowSheet();setPhase(0);fitSplitOps(sc.cutN,[...sc.closed,...A.op]);
+  // 전체 화면용 맞춤
+  fitNodes(sc.cutN,40);redraw();}
+function renderFlowSheet(){const F=FLOW;const ph=F.phases;
+  const steps=ph.map((p,k)=>`<button data-k="${k}" class="${k===F.idx?"on":""}">${esc(p.name)}<small>${esc(k===0?"사고 전":k===1?"사고 차단":"밸브 열기")}</small></button>`).join("");
+  openSheet("물 흐름",`${hh2(HOUR)}:00 · ${ph.map(p=>p.name).join(" → ")}`,`
+   <div class="player"><div class="steps" id="fSteps">${steps}</div>
+   <div class="actions" style="margin:0"><button class="btn pri" id="fPlay">${F.play?"❚❚ 멈춤":"▶ 자동 재생"}</button><button class="btn" id="fPrev">◀ 이전</button><button class="btn" id="fNext">다음 ▶</button>
+    <label class="op" style="padding:6px 10px"><input type="checkbox" id="fDet"${FLOWDETAIL?" checked":""}> 방향 바뀐 곳 표시</label></div></div>
+   <p class="note">움직이는 파란 점선이 물이 흐르는 방향입니다. 빨간 선은 단수 구역, 초록 선은 밸브를 열어 다시 물이 가는 구역입니다.${FLOWDETAIL?" 자주색은 직전 단계와 비교해 흐름 방향이 반대로 바뀐 관로, 회색 점선은 흐름이 멈춘 관로입니다.":""}${ph.length<3?" 비상연계 탭에서 밸브를 고르면 ③ 단계가 추가됩니다.":""}</p>`);
+  $("#fSteps").onclick=e=>{const b=e.target.closest("button");if(!b)return;FLOW.play=false;setPhase(+b.dataset.k);renderFlowSheet();};
+  $("#fPlay").onclick=()=>{FLOW.play=!FLOW.play;FLOW.last=performance.now();renderFlowSheet();};
+  $("#fPrev").onclick=()=>{FLOW.play=false;setPhase((FLOW.idx+FLOW.phases.length-1)%FLOW.phases.length);renderFlowSheet();};
+  $("#fNext").onclick=()=>{FLOW.play=false;setPhase((FLOW.idx+1)%FLOW.phases.length);renderFlowSheet();};
+  $("#fDet").onchange=e=>{FLOWDETAIL=e.target.checked;renderFlowSheet();needDraw=true;};
+  renderTabs();}
+function setPhase(k){const F=FLOW;if(!F)return;F.idx=k;F.last=performance.now();const ph=F.phases[k];
+  OV=ovCut(ph.cut,ph.rec,k>=1?F.sc.closed:[],ph.op);OV.links.forEach(o=>o.w=2.2);redraw();
+  setLegend([{c:FCOL.same,t:"물 흐름 방향"},{c:css("--cut"),t:"단수"},{c:css("--ok"),t:"연계로 회복"},...(FLOWDETAIL?[{c:FCOL.rev,t:"방향 바뀜"},{c:FCOL.stop,t:"흐름 멈춤"}]:[])]);
+  const bn=$("#banner");bn.innerHTML=`${esc(ph.name)}<small>${esc(ph.sub)}</small>`;bn.hidden=false;placeFloating();
+  document.querySelectorAll("#fSteps button").forEach((b,i)=>b.classList.toggle("on",i===k));needDraw=true;}
+function stopFlow(){FLOW=null;$("#banner").hidden=true;}
+function drawFlow(C){const F=FLOW;const t=performance.now();if(F.play&&t-F.last>3200)setPhase((F.idx+1)%F.phases.length);
+  drawArrows(C,F.set,F.phases[F.idx].q,F.idx?F.phases[F.idx-1].q:null,t,FLOWDETAIL);}
+function drawArrows(C,set,q,p,t,detail){
+  const s=view.s,cx=view.cx,cy=view.cy,hw=VP.w/2,hh=VP.h/2;const x0=cx-hw/s,x1=cx+hw/s,y0=cy-hh/s,y1=cy+hh/s;
+  const vis=linksIn(x0,y0,x1,y1);const groups=new Map();
+  for(const l of vis){if(!set[l])continue;const a=p?Math.abs(p[l])>FT:true,c=Math.abs(q[l])>FT;let cls;
+    if(!c){if(detail&&p&&a)cls="stop";else continue;}else if(detail&&p&&a&&Math.sign(p[l])!==Math.sign(q[l]))cls="rev";else cls="same";
+    const sp=cls==="stop"?0:Math.min(2,Math.floor(Math.log10(Math.abs(q[l])+1)/1.6));const key=cls+sp;let g=groups.get(key);if(!g){g={cls,sp,arr:[]};groups.set(key,g);}g.arr.push(l);}
+  C.save();C.setTransform(DPR,0,0,DPR,VP.ox*DPR,VP.oy*DPR);C.beginPath();C.rect(0,0,VP.w,VP.h);C.clip();C.lineCap="round";C.lineJoin="round";
+  const pathDir=(arr)=>{C.beginPath();for(const l of arr){const k0=GOFF[l],k1=GOFF[l+1];const rev=q[l]<0;
+      if(!rev){C.moveTo((GPTS[k0*2]-cx)*s+hw,hh-(GPTS[k0*2+1]-cy)*s);for(let kk=k0+1;kk<k1;kk++)C.lineTo((GPTS[kk*2]-cx)*s+hw,hh-(GPTS[kk*2+1]-cy)*s);}
+      else{C.moveTo((GPTS[(k1-1)*2]-cx)*s+hw,hh-(GPTS[(k1-1)*2+1]-cy)*s);for(let kk=k1-2;kk>=k0;kk--)C.lineTo((GPTS[kk*2]-cx)*s+hw,hh-(GPTS[kk*2+1]-cy)*s);}}};
+  for(const g of groups.values()){pathDir(g.arr);C.strokeStyle=FCOL[g.cls];C.lineWidth=2;if(g.cls==="stop"){C.setLineDash([2,4]);C.lineDashOffset=0;}else{C.setLineDash([6,7]);C.lineDashOffset=-((t/1000)*[14,26,44][g.sp])%13;}C.stroke();}
+  if(s>0.15){C.setLineDash([]);for(const g of groups.values()){if(g.cls==="stop")continue;C.fillStyle=FCOL[g.cls];for(const l of g.arr){if(LEN[l]*s<40)continue;const [mx,my,ang]=linkMid(l);const a=-(q[l]<0?ang+Math.PI:ang);const X_=(mx-cx)*s+hw,Y_=hh-(my-cy)*s;
+      C.save();C.translate(X_,Y_);C.rotate(a);C.beginPath();C.moveTo(4.5,0);C.lineTo(-3.5,-3.5);C.lineTo(-1.5,0);C.lineTo(-3.5,3.5);C.closePath();C.fill();C.restore();}}}
+  C.restore();}
+/* ============ 이토 지점 ============ */
+let FAC=[];
+function nearestFac(x,y,maxD){let best=null,bd=maxD;for(const f of FAC){const d=Math.hypot(f.x-x,f.y-y);if(d<bd){bd=d;best=f;}}return best?{...best,d:bd}:null;}
+function flushPlan(rep,extra){const h=HOUR;const inA=new Uint8Array(NN);const seeds=new Set();
+  for(const l of rep){const a=upNodeOf(l,h),b=downNodeOf(l,h);seeds.add(a);seeds.add(b);const {f}=downFracMulti([b],h);for(let i=0;i<NN;i++)if(f[i]>=0.3)inA[i]=1;inA[a]=inA[b]=1;}
+  if(extra)for(const i of extra)inA[i]=1;
+  const dist=new Float64Array(NN).fill(Infinity);const heap=[];const push=(d,v)=>{heap.push([d,v]);let i=heap.length-1;while(i>0){const p=(i-1)>>1;if(heap[p][0]<=heap[i][0])break;[heap[p],heap[i]]=[heap[i],heap[p]];i=p;}};
+  const pop=()=>{const t=heap[0],last=heap.pop();if(heap.length){heap[0]=last;let i=0;for(;;){const a=2*i+1,b=a+1;let m=i;if(a<heap.length&&heap[a][0]<heap[m][0])m=a;if(b<heap.length&&heap[b][0]<heap[m][0])m=b;if(m===i)break;[heap[m],heap[i]]=[heap[i],heap[m]];i=m;}}return t;};
+  for(const s0 of seeds){dist[s0]=0;push(0,s0);}
+  while(heap.length){const [d,v]=pop();if(d>dist[v])continue;for(let k=ADJS[v];k<ADJS[v+1];k++){const l=ADJ[k];if(INIT[l]===0&&!(SC&&SC.opened.includes(l)))continue;const w=N1[l]===v?N2[l]:N1[l];if(!inA[w])continue;const nd=d+Math.max(1,LEN[l]);if(nd<dist[w]){dist[w]=nd;push(nd,w);}}}
+  const pts=[];let len=0;const links=new Map();
+  for(let l=0;l<NL;l++)if(inA[N1[l]]&&inA[N2[l]]&&INIT[l]!==0){len+=LEN[l];links.set(l,{c:"rgba(30,110,220,.5)",w:3});}
+  for(let v=0;v<NN;v++){if(!inA[v]||NT[v]!==0||seeds.has(v))continue;let deg=0,out=0,inn=0;
+    for(let k=ADJS[v];k<ADJS[v+1];k++){const l=ADJ[k];if(INIT[l]===0)continue;deg++;const d=flowDir(l,h);if(!d)continue;(d>0?N1[l]:N2[l])===v?out++:inn++;}
+    if(deg===1||(out===0&&inn>0))pts.push({n:v,dead:deg===1,d:dist[v]});}
+  pts.sort((a,b)=>(a.d===Infinity)-(b.d===Infinity)||a.d-b.d);
+  let sel=pts.filter(p=>p.dead);const conv=pts.filter(p=>!p.dead);if(sel.length<30)sel=sel.concat(conv.slice(0,30-sel.length));sel=sel.slice(0,30).sort((a,b)=>a.d-b.d);
+  for(const p of sel)p.fac=nearestFac(X[p.n],Y[p.n],150);
+  return {pts:sel,total:pts.length,dead:pts.filter(p=>p.dead).length,len,links,rep};}
+function openFlush(){const rep=SC&&SC.closed.length?SC.closed:selAsCut();if(!rep.length){openSheet("복구 후 이토 지점","",`<p class="note">복구(차단)한 관로를 먼저 선택하세요.</p>`);return;}
+  const extra=SC?SC.cutN:null;const F=flushPlan(rep,extra);const h=HOUR;
+  OV={links:F.links,nodes:new Map(),pins:rep.slice(0,10).map(l=>{const [x,y]=linkMid(l);return {x,y,c:css("--cut"),label:"복구 지점"};}),marks:F.pts.map((p,i)=>({x:X[p.n],y:Y[p.n],t:String(i+1),c:"#1565c0"}))};
+  setLegend([{c:"rgba(30,110,220,.6)",t:"복구 후 통수 구역"},{c:"#1565c0",t:"이토 지점 (번호=권장 순서)",round:true}]);
+  openSheet("복구 후 이토 지점",`${hh2(h)}:00 흐름 기준 · ${F.pts.length}곳 추천 (관말 ${F.dead} · 흐름 끝 ${F.total-F.dead})`,
+   `<div class="kv"><div><span>통수 구역 관로</span><b>${fmt(F.len/1000,2)} km</b></div><div><span>이토 후보 전체</span><b>${fmt(F.total)}곳</b></div></div>
+    ${FAC.length?"":`<div class="callout warn">GIS 시설(관말·소화전) 자료를 불러오는 중입니다.</div>`}
+    <div class="tbl"><table><thead><tr><th>#</th><th>위치</th><th>구분</th><th class="r">복구지점에서</th><th>이토 시설</th></tr></thead><tbody>
+    ${F.pts.map((p,i)=>`<tr class="click" data-n="${p.n}"><td class="num">${i+1}</td><td>절점 ${esc(NET.nodes.id[p.n])}<br><span class="note" style="margin:0">${esc(NET.dmas[DMA[p.n]]||"")}</span></td><td><span class="tag">${p.dead?"관말":"흐름 끝"}</span></td><td class="r num">${p.d===Infinity?"–":fmt(p.d,0)+" m"}</td><td>${p.fac?`${esc(p.fac.k)} ${esc(p.fac.id)}<br><span class="note" style="margin:0">${fmt(p.fac.d,0)} m</span>`:'<span class="note" style="margin:0">–</span>'}</td></tr>`).join("")}</tbody></table></div>
+    <p class="note">복구한 관로에서 ${hh2(h)}시 흐름을 따라 물이 30% 이상 흘러가는 구역${extra?"과 단수됐던 구역":""}에서 관말과 흐름이 멈추는 지점을 골랐습니다. 가까운 곳부터 번호 순으로 이토하면 탁수를 바깥쪽으로 밀어낼 수 있습니다.</p>`);
+  wireRows();let a=1e18,b=1e18,c=-1e18,d=-1e18;for(const p of F.pts){const n=p.n;a=Math.min(a,X[n]);c=Math.max(c,X[n]);b=Math.min(b,Y[n]);d=Math.max(d,Y[n]);}for(const l of rep){const [x,y]=linkMid(l);a=Math.min(a,x);c=Math.max(c,x);b=Math.min(b,y);d=Math.max(d,y);}if(a<1e17)fit(a,b,c,d,50);redraw();}
+
+/* ============ 수용가 장 ============ */
+function openCust(){SPLIT=null;if(!CU){openSheet("수용가","불러오는 중…",`<p class="note">수용가 자료를 불러오는 중입니다. 잠시 후 다시 누르세요.</p>`);return;}
+  let tagged,title,sub;const sc=SC&&SC.key===selAsCut().join(",")?SC:null;
+  if(sc&&sc.cutN.length){const A=afterState();if(A.op.length){const keep=new Set(A.cutN);tagged=sc.cutN.map(n=>[n,keep.has(n)?"단수":"연계로 회복"]);title="단수 수용가 (연계 전·후)";sub=`연계 전 ${fmt(mCount(sc.cutN))} → 연계 후 ${fmt(mCount(A.cutN))}개`;}
+    else{tagged=sc.cutN.map(n=>[n,"단수"]);title="단수 수용가";}
+    OV=ovCut(A.op.length?A.cutN:sc.cutN,A.op.length?sc.cutN.filter(i=>A.conn[i]):null,A.op);}
+  else{const ns=new Set(selNodes());for(const l of selLinks()){ns.add(N1[l]);ns.add(N2[l]);}tagged=[...ns].map(n=>[n,"선택"]);title="선택 지점 수용가";const meters=new Map();for(const [n] of tagged)if(CN[n])meters.set(n,{n:CN[n],c:"#1556b8"});OV={links:new Map(),nodes:new Map(),pins:[],meters};}
+  redraw();const tagMap=new Map(tagged);const rows=custRows(tagged.map(x=>x[0]));const tagOf=(n,plain)=>{const t=tagMap.get(n);return plain?t:`<span class="tag ${t==="단수"?"cut":""}">${t}</span>`;};
+  openSheet(title,sub||`수도미터 ${fmt(rows.length)}개 · 상세정보 ${fmt(rows.filter(r=>CU.a[r[0]]).length)}건`,
+   `<div class="kv"><div><span>수도미터</span><b>${fmt(rows.length)} 개</b></div><div><span>가구수 합</span><b>${fmt(rows.reduce((s,[k])=>s+(CU.hh[k]||0),0))}</b></div></div>
+    ${CU.pub?"":`<div class="actions"><button class="btn pri" id="cCsv">목록 저장(CSV)</button></div>`}${custTable(rows,300,tagOf)}
+    <p class="note">수도미터 위치는 관망 모델에서 각 수용가가 할당된 절점 기준입니다. 이름·전화번호는 보안상 앱에 넣지 않았습니다.</p>`);
+  $("#cCsv")&&($("#cCsv").onclick=()=>saveCsv(rows,`${title.replace(/[\s()·]/g,"_")}.csv`,tagOf));wireRows();}
+
+/* ============ 검색 (시설·소블록·주소) ============ */
+let INDEX=[];const ADDR=new Map(),ANUM=new Map();
+function buildSearch(){
+  for(const r of RES)INDEX.push({k:resKind(r),n:resName(r),s:"",go:()=>{SELN=[{t:"n",i:r}];openChapter("sel");flyTo(X[r],Y[r],0.35);}});
+  for(let l=0;l<NL;l++){const t=LT[l];if(t===2||t===3||t===7){INDEX.push({k:t===2?"가압장":t===3?"감압밸브":"경계밸브",n:linkName(l),s:NET.links.id[l],go:()=>{SELN=[{t:"l",i:l}];const [x,y]=linkMid(l);openChapter("sel");flyTo(x,y,Math.max(0.8,view.s));}});}}
+  NET.dmas.forEach((d,i)=>{if(d&&DMACEN[i])INDEX.push({k:"소블록",n:d,s:`${DMACEN[i][2]}절점`,go:()=>showDma(i)});});
+  for(const d of DONGS)INDEX.push({k:"행정동",n:d.n,s:"",go:()=>{flyTo(d.cx,d.cy,0.06);}});}
+const normA=s=>s.replace(/경기도|경기|광주시/g,"").replace(/번지/g,"").replace(/\s+/g,"").trim();
+const RE_JB=/^(\S+?(?:동|리|가))(산)?(\d+)(?:-(\d+))?/;const RE_RD=/^(\S+?(?:로|길)(?:\d+(?:번)?길)?)(\d+)(?:-(\d+))?/;
+const jbName=n=>n.replace(/^.*[읍면](?=.+(?:동|리|가)$)/,"");const rdName=n=>n.replace(/^.*[읍면동](?=[^읍면동]+(?:로|길))/,"");
+function parseAddr(s){let m=s.match(RE_RD);if(m&&!/(동|리)\d/.test(m[1]))return {name:rdName(m[1]),main:m[2],sub:m[3]};m=s.match(RE_JB);if(m)return {name:jbName(m[1])+(m[2]||""),main:m[3],sub:m[4]};return null;}
+function addKey(name,main,sub,pt){const key=name+main+(sub?"-"+sub:"");let a=ADDR.get(key);if(!a){a=[];ADDR.set(key,a);}a.push(pt);let b=ANUM.get(name);if(!b){b=[];ANUM.set(name,b);}b.push([+main,+(sub||0),pt]);}
+function buildAddrIndex(){if(!CU)return;for(let k=0;k<CU.n.length;k++){const n=CU.n[k];const pt={x:X[n],y:Y[n],n};
+    const j=CU.j[k];if(j){const m=normA(j.replace(/외.*$/,"")).match(RE_JB);if(m)addKey(jbName(m[1])+(m[2]||""),m[3],m[4],pt);}
+    const r=CU.r[k];if(r){const m=normA(r).match(RE_RD);if(m)addKey(rdName(m[1]),m[2],m[3],pt);}}}
+let PENDADDR=null;function addAddrPoints(a){PENDADDR=a;if(!CU&&!X)return;for(let i=0;i<a.length;i++){const [x,y,street,num]=a[i];const m=String(num).match(/^(\d+)(?:-(\d+))?/);if(m)addKey(rdName(normA(street)),m[1],m[2],{x,y,n:-1});}}
+function addrLookup(q){const pa=parseAddr(normA(q));if(!pa)return null;const {name,main,sub}=pa;const key=name+main+(sub?"-"+sub:"");const ex=ADDR.get(key);if(ex&&ex.length)return {pts:ex,exact:true,label:key};
+  const list=ANUM.get(name);if(!list||!list.length)return null;const qv=(+main)+(+sub||0)/1000;let lo=null,hi=null;
+  for(const e of list){const v=e[0]+e[1]/1000;if(v<=qv&&(!lo||v>lo[3]))lo=[...e,v];if(v>=qv&&(!hi||v<hi[3]))hi=[...e,v];}
+  if(lo&&hi&&hi[3]>lo[3]&&/(로|길)/.test(name)){const t=(qv-lo[3])/(hi[3]-lo[3]);return {pts:[{x:lo[2].x+(hi[2].x-lo[2].x)*t,y:lo[2].y+(hi[2].y-lo[2].y)*t}],exact:false,label:`${name} ${main}${sub?"-"+sub:""} (${lo[0]}~${hi[0]}번 사이 추정)`};}
+  const best=lo&&hi?(qv-lo[3]<=hi[3]-qv?lo:hi):(lo||hi);
+  return {pts:[best[2]],exact:false,label:`${name} ${best[0]}${best[1]?"-"+best[1]:""}`};}
+function goAddr(res,label){const p=res.pts;const x=p.reduce((s,a)=>s+a.x,0)/p.length,y=p.reduce((s,a)=>s+a.y,0)/p.length;PIN={x,y,label};
+  const n=nearestNode(x,y,300);if(n>=0){SELN=[{t:"n",i:n}];}if(n>=0)openChapter("sel");flyTo(x,y,Math.max(view.s,1.2));
+  if(!res.exact)toast(`정확한 번지 자료가 없어 근사 위치(${res.label})로 이동했습니다.`,4200);}
+const norm=s=>s.toLowerCase().replace(/[\s()\-·]/g,"");
+function search(q){const n=norm(q);if(!n)return [];const out=[];
+  const ad=addrLookup(q);if(ad)out.push({it:{k:ad.exact?"주소":"주소(근사)",n:ad.label,s:ad.exact?`수용가 ${ad.pts.length}`:"가까운 번지",go:()=>goAddr(ad,q.trim())},sc:-1});
+  for(const it of INDEX){const a=norm(it.n),b=norm(it.s);if(a.includes(n)||b===n)out.push({it,sc:(a.startsWith(n)?0:1)+(a.length/100)});}
+  if(CU&&CU.b&&n.length>=2){let c=0;for(let k=0;k<CU.b.length&&c<10;k++){const b=CU.b[k]||(CU.v&&CU.v[k]);if(b&&norm(b).includes(n)){const nd=CU.n[k];out.push({it:{k:"상호",n:b,s:(CU.r[k]||CU.j[k]||"").slice(0,18),go:()=>goAddr({pts:[{x:X[nd],y:Y[nd],n:nd}],exact:true},b)},sc:2});c++;}}}
+  if(BM&&BM.pname&&n.length>=2){let c=0;for(const p of BM.pname){if(c>=8)break;if(norm(p[2]).includes(n)){const [x,y,nm]=p;out.push({it:{k:"장소",n:nm,s:"지도",go:()=>goAddr({pts:[{x,y}],exact:true},nm)},sc:1.5});c++;}}}
+  out.sort((a,b)=>a.sc-b.sc);const r=out.slice(0,25).map(o=>o.it);
+  const nid=NET.nodes.id.indexOf(q.trim());if(nid>=0)r.unshift({k:"절점",n:q.trim(),s:NET.dmas[DMA[nid]]||"",go:()=>{SELN=[{t:"n",i:nid}];openChapter("sel");flyTo(X[nid],Y[nid],1.2);}});
+  const lid=NET.links.id.indexOf(q.trim());if(lid>=0)r.unshift({k:"관로",n:q.trim(),s:`D${DIA[lid]}`,go:()=>{SELN=[{t:"l",i:lid}];const [x,y]=linkMid(lid);openChapter("sel");flyTo(x,y,1.2);}});
+  return r;}
+let searchT=0;
+$("#q").addEventListener("input",()=>{clearTimeout(searchT);searchT=setTimeout(renderResults,150);});
+$("#q").addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();renderResults(true);}if(e.key==="Escape"){e.stopPropagation();hideResults();}});
+$("#q").addEventListener("focus",()=>{if($("#q").value)renderResults();});
+function hideResults(){$("#results").hidden=true;}
+function renderResults(enter){const q=$("#q").value.trim();const box=$("#results");if(!q){box.hidden=true;return;}
+  const r=search(q);
+  const online=`<button data-on="1"><span class="kind">온라인</span><span class="name">"${esc(q)}" 장소·주소로 찾기</span><span class="sub">온라인</span></button>`;
+  box.innerHTML=r.map((it,i)=>`<button data-i="${i}"><span class="kind">${esc(it.k)}</span><span class="name">${esc(it.n)}</span><span class="sub num">${esc(it.s)}</span></button>`).join("")+online;
+  box.hidden=false;box.onclick=e=>{const b=e.target.closest("button");if(!b||b.disabled)return;if(b.dataset.on){onlineSearch(q);return;}hideResults();$("#q").blur();r[+b.dataset.i].go();};
+  if(enter&&r.length&&(r[0].k==="주소"))r[0].go(),hideResults();else if(enter&&r.length===0)onlineSearch(q);}
+let MCP;(async()=>{try{MCP=window.claude&&window.claude.use?await window.claude.use("mcp"):null;}catch(e){MCP=null;}})();
+const payloadText=res=>{let p=res&&res.payload;if(typeof p==="string")return p;if(res&&res.content)return res.content.map(c=>c.text||"").join("\n");return JSON.stringify(p||"");};
+async function onlineSearch(q){const box=$("#results");
+  if(!MCP){if(window.KAKAO_JS_KEY){kakaoSdkSearch(q);return;}directNominatim(q);return;box.innerHTML=`<button disabled><span class="kind">카카오</span><span class="name">온라인 검색은 claude.ai에서 열었을 때만 됩니다</span></button>`;return;}
+  box.innerHTML=`<button disabled><span class="kind">카카오</span><span class="name">"${esc(q)}" 찾는 중…</span></button>`;box.hidden=false;
+  let items=[];
+  try{const res=await MCP.callTool("PlayMCP","KakaoMap-SearchPlaceByKeywordOpen",{keyword:/광주/.test(q)?q:"경기 광주시 "+q});const txt=payloadText(res);
+    const re=/\d+\.\s*([^\n]+)\n-\s*주소:\s*([^\n]*)/g;let m;while((m=re.exec(txt))){const name=m[1].trim(),addr=m[2].trim();if(!/광주시/.test(addr))continue;const ad=addrLookup(addr);items.push({name,addr,ad});}}
+  catch(err){console.warn(err);}
+  if(!items.length){geocodeNominatim(q);return;}
+  box.innerHTML=items.map((it,i)=>`<button data-i="${i}"><span class="kind">${it.ad?(it.ad.exact?"장소":"장소(근사)"):"장소"}</span><span class="name">${esc(it.name)}<br><span style="font-size:12px;color:var(--muted)">${esc(it.addr)}</span></span></button>`).join("");
+  box.onclick=e=>{const b=e.target.closest("button");if(!b)return;const it=items[+b.dataset.i];hideResults();$("#q").blur();if(it.ad)goAddr(it.ad,it.name);else geocodeNominatim(it.addr,it.name);};}
+function loadKakao(){return new Promise((res,rej)=>{if(window.kakao&&kakao.maps&&kakao.maps.services)return res();const sc=document.createElement("script");sc.src=`https://dapi.kakao.com/v2/maps/sdk.js?appkey=${window.KAKAO_JS_KEY}&libraries=services&autoload=false`;sc.onload=()=>kakao.maps.load(()=>res());sc.onerror=rej;document.head.appendChild(sc);});}
+async function kakaoSdkSearch(q){const box=$("#results");box.hidden=false;box.innerHTML=`<button disabled><span class="kind">카카오</span><span class="name">"${esc(q)}" 찾는 중…</span></button>`;
+  try{await loadKakao();}catch(e){directNominatim(q);return;}
+  const qq=/광주/.test(q)?q:"경기 광주시 "+q;const items=[];
+  await new Promise(r=>new kakao.maps.services.Geocoder().addressSearch(qq,(d,st)=>{if(st===kakao.maps.services.Status.OK)for(const a of d)items.push({name:a.address_name,addr:a.road_address?a.road_address.address_name:"",lat:+a.y,lon:+a.x,k:"주소"});r();}));
+  await new Promise(r=>new kakao.maps.services.Places().keywordSearch(qq,(d,st)=>{if(st===kakao.maps.services.Status.OK)for(const p of d)if(/광주시/.test(p.address_name))items.push({name:p.place_name,addr:p.road_address_name||p.address_name,lat:+p.y,lon:+p.x,k:"장소"});r();},{location:new kakao.maps.LatLng(37.41,127.27),radius:20000}));
+  if(!items.length){directNominatim(q);return;}
+  box.innerHTML=items.slice(0,12).map((it,i)=>`<button data-i="${i}"><span class="kind">${it.k}</span><span class="name">${esc(it.name)}<br><span style="font-size:12px;color:var(--muted)">${esc(it.addr)}</span></span></button>`).join("");
+  box.onclick=e=>{const b=e.target.closest("button");if(!b)return;const it=items[+b.dataset.i];const [x,y]=toLocal(it.lat,it.lon);hideResults();$("#q").blur();goAddr({pts:[{x,y}],exact:true},it.name);};}
+async function directNominatim(q){const box=$("#results");box.hidden=false;box.innerHTML=`<button disabled><span class="kind">주소</span><span class="name">"${esc(q)}" 찾는 중…</span></button>`;
+  const [la0,lo0]=toLatLon(BOUNDS.x0-3000,BOUNDS.y0-3000),[la1,lo1]=toLatLon(BOUNDS.x1+3000,BOUNDS.y1+3000);const qq=/광주/.test(q)?q:"경기도 광주시 "+q;
+  try{const r=await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(qq)}&format=jsonv2&limit=6&countrycodes=kr&accept-language=ko&viewbox=${lo0.toFixed(4)},${la1.toFixed(4)},${lo1.toFixed(4)},${la0.toFixed(4)}&bounded=1`);const arr=await r.json();
+    if(!arr.length){box.innerHTML=`<button disabled><span class="kind">주소</span><span class="name">결과 없음 · "송정동 466-5"처럼 동·번지로 다시 시도</span></button>`;return;}
+    box.innerHTML=arr.map((a,i)=>`<button data-i="${i}"><span class="kind">주소(근사)</span><span class="name">${esc(a.display_name.split(",").slice(0,3).join(","))}</span></button>`).join("");
+    box.onclick=e=>{const b=e.target.closest("button");if(!b)return;const a=arr[+b.dataset.i];const [x,y]=toLocal(+a.lat,+a.lon);hideResults();$("#q").blur();goAddr({pts:[{x,y}],exact:true},q);};}
+  catch(e){box.innerHTML=`<button disabled><span class="kind">주소</span><span class="name">온라인 주소 검색을 쓸 수 없습니다. 동·번지로 검색하세요</span></button>`;}}
+async function geocodeNominatim(q,label){const box=$("#results");box.hidden=false;box.innerHTML=`<button disabled><span class="kind">주소</span><span class="name">"${esc(q)}" 찾는 중…</span></button>`;
+  const [la0,lo0]=toLatLon(BOUNDS.x0-3000,BOUNDS.y0-3000),[la1,lo1]=toLatLon(BOUNDS.x1+3000,BOUNDS.y1+3000);const qq=/광주/.test(q)?q:"경기도 광주시 "+q;
+  const url=`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(qq)}&format=jsonv2&limit=6&countrycodes=kr&accept-language=ko&viewbox=${lo0.toFixed(4)},${la1.toFixed(4)},${lo1.toFixed(4)},${la0.toFixed(4)}&bounded=1`;
+  try{const res=await MCP.callTool("Firecrawl","firecrawl_scrape",{url,formats:["rawHtml"],objective:"상수도 관망 지도에서 입력한 주소의 좌표를 찾기"});
+    let p=res&&res.payload;if(typeof p==="string"){try{p=JSON.parse(p)}catch(e){}}if(!p&&res&&res.content&&res.content[0]){try{p=JSON.parse(res.content[0].text)}catch(e){}}
+    let raw=p&&(p.rawHtml||(p.data&&p.data.rawHtml));let arr=[];if(raw){try{arr=JSON.parse(raw.replace(/^[^\[]*/,"").replace(/[^\]]*$/,""));}catch(e){}}
+    if(!arr.length){box.innerHTML=`<button disabled><span class="kind">주소</span><span class="name">결과 없음 · "송정동 466-5"처럼 동·번지로 다시 시도</span></button>`;return;}
+    box.innerHTML=arr.map((a,i)=>`<button data-i="${i}"><span class="kind">주소(근사)</span><span class="name">${esc(a.display_name.split(",").slice(0,3).join(","))}</span></button>`).join("");
+    box.onclick=e=>{const b=e.target.closest("button");if(!b)return;const a=arr[+b.dataset.i];const [x,y]=toLocal(+a.lat,+a.lon);hideResults();$("#q").blur();goAddr({pts:[{x,y}],exact:true},label||q);toast("도로 단위 근사 위치입니다.",3000);};}
+  catch(err){box.innerHTML=`<button disabled><span class="kind">주소</span><span class="name">주소 검색에 실패했습니다. 동·번지로 다시 시도하세요</span></button>`;}}
+function showDma(d){const links=new Map();const col=hueCol(d);let len=0,cnt=0,dem=0,pmin=1e9,pmax=-1e9;const ns=[];
+  for(let l=0;l<NL;l++){if(DMA[N1[l]]===d&&DMA[N2[l]]===d){links.set(l,{c:col,w:4});len+=LEN[l];}}
+  for(let i=0;i<NN;i++)if(DMA[i]===d){ns.push(i);cnt++;dem+=Math.max(0,Dh(HOUR,i));const p=Ph(HOUR,i);if(p<pmin)pmin=p;if(p>pmax)pmax=p;}
+  const inl=[];for(let l=0;l<NL;l++){const d1=DMA[N1[l]],d2=DMA[N2[l]];if((d1===d)!==(d2===d)){const dir=flowDir(l,HOUR);if(!dir)continue;const to=dir>0?N2[l]:N1[l];if(DMA[to]===d)inl.push(l);}}
+  for(const l of inl)links.set(l,{c:"#e0119d",w:6});
+  OV={links,nodes:new Map(),pins:[]};setLegend([{c:col,t:NET.dmas[d]},{c:"#e0119d",t:"유입 지점"}]);CUR=null;renderTabs();
+  openSheet("소블록 "+NET.dmas[d],`${hh2(HOUR)}:00 기준`,`<div class="kv"><div><span>절점</span><b>${fmt(cnt)}</b></div><div><span>관로 연장</span><b>${fmt(len/1000,2)} km</b></div><div><span>수요량</span><b>${fmt(dem,0)} m³/일</b></div><div><span>수도미터</span><b>${CN?fmt(mCount(ns))+" 개":"…"}</b></div><div><span>수압 범위</span><b>${fmt(pmin,1)}~${fmt(pmax,1)} m</b></div></div>
+   <h3>유입 지점 (${inl.length})</h3>${inl.length?`<div class="tbl"><table><thead><tr><th>관로·시설</th><th>구분</th><th class="r">유입량 m³/일</th></tr></thead><tbody>${inl.map(l=>`<tr class="click" data-l="${l}"><td>${esc(linkName(l))}</td><td>${tagFor(l)}</td><td class="r num">${fmt(Math.abs(Qh(HOUR,l)),0)}</td></tr>`).join("")}</tbody></table></div>`:`<p class="note">이 시각에 다른 블록에서 들어오는 유량이 없습니다.</p>`}`);
+  wireRows();fitNodes(ns);}
+
+/* ============ 표시 설정 ============ */
+$("#chipLayers").onclick=()=>{CUR=null;renderTabs();openSheet("표시 설정","",`<div class="list-ops">
+  ${[["base","배경지도 (OpenStreetMap)"],["gHyd","소화전 (GIS)"],["gEnd","관말·이토 (GIS)"],["gVal","제수밸브 등 (GIS, 확대 시)"],["gNew","GIS 신규 관로 (보완 검토)"],["meters","단수 수도미터 위치(□)"],["nodes","절점 표시"],["dong","행정동 경계·이름"],["facil","배수지·가압장·감압밸브"],["valves","경계밸브·폐쇄관로 (확대 시)"],["labels","시설 이름"]].map(([k,t])=>`<label class="op"><span class="nm">${t}</span><input type="checkbox" data-k="${k}"${layers[k]?" checked":""}></label>`).join("")}</div>
+  <p class="note">배경지도: © OpenStreetMap 기여자 (ODbL). 관망: 광주시 수리검토 관망(현재기준).inp · 절점 ${fmt(NN)} · 관로 ${fmt(NL)} · 해석 00~23시</p>`,"half");
+  $("#shBody").querySelectorAll("input[data-k]").forEach(i=>i.onchange=()=>{layers[i.dataset.k]=i.checked;store("layers",layers);redraw();});};
+$("#btnFit").onclick=()=>fitAll();$("#btnGps").onclick=startGps;
+
+/* ============ 현재 위치 안내 (소블록·행정동·대표 흐름) ============ */
+function inPoly(x,y,p){let c=false;for(let i=0,j=p.length-2;i<p.length;j=i,i+=2){const xi=p[i],yi=p[i+1],xj=p[j],yj=p[j+1];if((yi>y)!==(yj>y)&&x<(xj-xi)*(y-yi)/(yj-yi)+xi)c=!c;}return c;}
+function dongAt(x,y){for(const d of DONGS)for(const p of d.polys)if(inPoly(x,y,p))return d.n;return "";}
+function blockAt(x,y,rad){const ci=Math.floor((x-GX0)/CELL),cj=Math.floor((y-GY0)/CELL),r=Math.max(1,Math.min(6,Math.ceil(rad/CELL)));const cnt=new Map();let best=-1,bd=1e18;
+  for(let j=cj-r;j<=cj+r;j++)for(let i=ci-r;i<=ci+r;i++){if(i<0||j<0||i>=GW||j>=GH)continue;const c=GRIDN[j*GW+i];for(let k=0;k<c.length;k++){const n=c[k];if(NT[n]!==0)continue;const d2=(X[n]-x)**2+(Y[n]-y)**2;if(d2>rad*rad)continue;
+    const w=1/(1+Math.sqrt(d2)/rad*3);const dm=DMA[n];if(NET.dmas[dm])cnt.set(dm,(cnt.get(dm)||0)+w);if(d2<bd){bd=d2;best=n;}}}
+  let dm=-1,bw=0;for(const [d,w] of cnt)if(w>bw){bw=w;dm=d;}
+  if(dm<0)return null;let rep=-1,rd=1e18;for(let j=cj-r;j<=cj+r;j++)for(let i=ci-r;i<=ci+r;i++){if(i<0||j<0||i>=GW||j>=GH)continue;for(const n of GRIDN[j*GW+i]){if(DMA[n]!==dm||NT[n]!==0)continue;const d2=(X[n]-x)**2+(Y[n]-y)**2;if(d2<rd){rd=d2;rep=n;}}}
+  return {dm,rep};}
+function flowChain(v,h){ // 가장 큰 유입 유량을 따라 상류로 → 시설 위주 경로
+  const seen=new Set(),chain=[];let steps=0;
+  while(steps++<60000){if(NT[v]!==0){chain.push(resName(v));break;}seen.add(v);let bl=-1,bq=0;
+    for(let k=ADJS[v];k<ADJS[v+1];k++){const l=ADJ[k];const dir=flowDir(l,h);if(!dir)continue;const from=dir>0?N1[l]:N2[l],to=dir>0?N2[l]:N1[l];if(to!==v||seen.has(from))continue;const q=Math.abs(Qh(h,l));if(q>bq){bq=q;bl=l;}}
+    if(bl<0)break;if((LT[bl]===2||LT[bl]===3)&&NET.links.c[bl]&&NET.links.c[bl]!=="감압밸브"){const nm=linkName(bl);if(chain[chain.length-1]!==nm)chain.push(nm);}
+    v=flowDir(bl,h)>0?N1[bl]:N2[bl];}
+  chain.reverse();return chain.length>5?[chain[0],"…",...chain.slice(-3)]:chain;}
+let HERE={k:""};
+function updateHere(){const el=$("#here");if(!el||!NET||!GRIDN)return;
+  if(SPLIT||FLOW||OV){el.hidden=true;HERE.k="";return;}
+  const top=($("#chips").getBoundingClientRect().bottom||100)+40,bot=Hh-sheetH();const py=(top+bot)/2,px=W/2;
+  const x=view.cx+(px-W/2)/view.s,y=view.cy-(py-Hh/2)/view.s;
+  const k=[Math.round(x/20),Math.round(y/20),view.s.toFixed(3),HOUR].join(",");if(k===HERE.k)return;HERE.k=k;
+  const rad=Math.max(120,Math.min(1500,140/view.s));const b=blockAt(x,y,rad);const dong=dongAt(x,y);
+  if(!b&&!dong){el.hidden=true;return;}
+  $("#hereT").innerHTML=(b?esc(NET.dmas[b.dm]):esc(dong))+(b&&dong?`<small>${esc(dong)}</small>`:"");
+  let f="";if(b&&b.rep>=0){const ch=flowChain(b.rep,HOUR);if(ch.length)f=ch.map(esc).join(" → ")+" → "+esc(NET.dmas[b.dm]);}
+  $("#hereF").innerHTML=f;el.hidden=false;}
+setInterval(()=>{if(!interacting)updateHere();},350);
+
+/* ============ boot ============ */
+addEventListener("resize",()=>{resize();if(sheetState!=="closed")setSheet(sheetState);});
+resize();requestAnimationFrame(loop);
+if(!("DecompressionStream" in window)){$("#ldTxt").textContent="이 브라우저는 지원되지 않습니다. 최신 Chrome·Safari(16.4 이상)로 열어 주세요.";}
+else loadAll().then(()=>{$("#loader").hidden=true;fitAll();placeFloating();
+  if(!store("seenHelp3")){CUR="sel";renderTabs();showSelection();store("seenHelp3",1);}
+  loadBasemap();setTimeout(()=>{if(ENG.st==="idle")ensureEngine();},2500);loadCust();loadFac();
+}).catch(err=>{console.error(err);$("#ldTxt").textContent="관망 자료를 불러오지 못했습니다: "+err.message;});
+
+/* ============ AI 분석 (Claude 연결 시 Claude, 아니면 간이 분석) ============ */
+const AI={log:[],busy:false,ctl:null,sample:undefined,tools:false,scen:null,plans:null,keepOV:false,turns:[]};
+(async()=>{let s=null;try{if(window.claude&&claude.use)s=await claude.use("sample");}catch(e){s=null;}
+  AI.sample=s;if(s){try{const lim=await s.limits();AI.tools=!!(lim&&lim.tools);}catch(e){AI.tools=false;}}
+  if(CUR==="ai")renderAI();})();
+let LIDX=null,NIDX=null;
+function idIndex(){if(LIDX)return;LIDX=new Map();NET.links.id.forEach((s,i)=>LIDX.set(String(s),i));NIDX=new Map();NET.nodes.id.forEach((s,i)=>NIDX.set(String(s),i));}
+function findLinkId(s){idIndex();s=String(s||"").trim();if(LIDX.has(s))return LIDX.get(s);const m=s.match(/[A-Za-z]*\d+[A-Za-z0-9-]*$/);if(m&&LIDX.has(m[0]))return LIDX.get(m[0]);
+  for(let l=0;l<NL;l++){if(NET.links.c[l]&&(NET.links.c[l]===s||linkName(l)===s))return l;}return -1;}
+const kg=m=>m==null||isNaN(m)?null:Math.round(m)/10; // m → kgf/cm² (소수 1자리)
+const kg2=m=>m==null||isNaN(m)?null:(m/10).toFixed(2);
+async function waitCN(){for(let i=0;i<60&&!CN;i++)await new Promise(r=>setTimeout(r,250));return !!CN;}
+
+/* ---- 도구 1: 선택/검색 정보 ---- */
+function elemInfo(e){const sp=e.t==="n"?specNode(e.i):specLink(e.i);const o={종류:sp.kind,이름:sp.title,ID:e.t==="n"?NET.nodes.id[e.i]:NET.links.id[e.i]};for(const [a,b] of sp.kv)o[a]=b;
+  if(e.t==="l"&&LT[e.i]===3){o["설정압_m"]=NET.links.set[e.i];}o.기준시각=hh2(HOUR)+":00";return o;}
+function toolSelection(){if(!SELN.length)return {selected:null,note:"지도에서 선택된 요소가 없습니다."};return {selected:SELN.map(elemInfo)};}
+function toolFind({query}){const q=String(query||"").replace(/\s/g,"");if(!q)throw new Error("query가 비었습니다");const out=[];
+  for(let l=0;l<NL&&out.length<10;l++){const t=LT[l];if(t!==2&&t!==3&&t!==7&&String(NET.links.id[l])!==q)continue;const nm=linkName(l);if(nm.replace(/\s/g,"").includes(q)||String(NET.links.id[l])===q)out.push({ID:NET.links.id[l],이름:nm,종류:linkKind(l)});}
+  for(const r of RES){const nm=resName(r);if(nm.replace(/\s/g,"").includes(q))out.push({ID:NET.nodes.id[r],이름:nm,종류:resKind(r)});}
+  NET.dmas.forEach((d,i)=>{if(d&&d.replace(/\s/g,"").includes(q)&&out.length<14)out.push({소블록:d});});return {results:out};}
+function toolElement({id}){idIndex();const s=String(id||"").trim();let l=findLinkId(s);if(l>=0)return elemInfo({t:"l",i:l});if(NIDX.has(s))return elemInfo({t:"n",i:NIDX.get(s)});throw new Error("ID를 찾지 못했습니다: "+s);}
+function toolCut({id}){const l=id?findLinkId(id):(SELN[0]&&SELN[0].t==="l"?SELN[0].i:-1);if(l<0)throw new Error("관로를 찾지 못했습니다");const {cutN}=cutSet([l],[]);
+  return {관로:linkName(l),단수_절점:cutN.length,단수_수도미터:mCount(cutN),영향_소블록:[...new Set(cutN.map(i=>NET.dmas[DMA[i]]).filter(Boolean))].slice(0,8)};}
+
+/* ---- 도구 2: 감압밸브 설정·밸브 조작 시뮬레이션 (임시) ---- */
+const PCOL={low:"#d92b2b",warn:"#ef8a17",ok:"#1e6fd9",high:"#8e24aa"};
+const pcol=m=>m<15?PCOL.low:m<20?PCOL.warn:m>=70?PCOL.high:PCOL.ok;
+async function toolSimulate(a){const ok=await ensureEngine();if(!ok)throw new Error("이 기기에서 수리계산 엔진을 쓸 수 없습니다");
+  const hour=a.hour!=null&&a.hour>=0&&a.hour<24?Math.floor(+a.hour):HOUR;const settings={},chg=[],closed=[],opened=[];
+  for(const s of (a.prv_settings||[])){let l=findLinkId(s.id);if(l<0&&SELN[0]&&SELN[0].t==="l"&&LT[SELN[0].i]===3&&(s.id==null||s.id===""||s.id==="selected"))l=SELN[0].i;if(l<0)throw new Error("감압밸브를 찾지 못했습니다: "+s.id);
+    if(LT[l]!==3)throw new Error(linkName(l)+"은(는) 감압밸브가 아닙니다");let v=+s.setting_m;if(!(v>0&&v<200))throw new Error("설정압(m)이 올바르지 않습니다");settings[l]=v;chg.push(l);}
+  for(const id of (a.close_ids||[])){const l=findLinkId(id);if(l<0)throw new Error("관로를 찾지 못했습니다: "+id);closed.push(l);}
+  for(const id of (a.open_ids||[])){const l=findLinkId(id);if(l<0)throw new Error("관로를 찾지 못했습니다: "+id);opened.push(l);}
+  if(!chg.length&&!closed.length&&!opened.length)throw new Error("바꿀 내용이 없습니다");
+  aiNote("수리계산 실행 중 ("+hh2(hour)+":00 기준)…");
+  const b=await baseAt(hour);const r=await solve({hour,settings,closed,opened});await waitCN();
+  const aff=[];for(let i=0;i<NN;i++){if(NT[i]!==0)continue;const p0=b.p[i],p1=r.p[i];if(isNaN(p1)&&!isNaN(p0)){aff.push(i);continue;}if(Math.abs((p1||0)-(p0||0))>0.3)aff.push(i);}
+  const cut=aff.filter(i=>isNaN(r.p[i]));const live=aff.filter(i=>!isNaN(r.p[i]));
+  const st=(arr,p)=>{let mn=1e9,mx=-1e9,s=0,n=0,lowN=[];for(const i of arr){const v=p[i];if(isNaN(v))continue;mn=Math.min(mn,v);mx=Math.max(mx,v);s+=v;n++;if(v<15)lowN.push(i);}return n?{min:mn,max:mx,avg:s/n,lowN}:null;};
+  const sb=st(live,b.p),sa=st(live,r.p);
+  const out={기준시각:hh2(hour)+":00",변경:[...chg.map(l=>{const dn=N2[l];return {감압밸브:linkName(l),ID:NET.links.id[l],설정압_전:kg2(NET.links.set[l])+" kgf/cm²",설정압_후:kg2(settings[l])+" kgf/cm²",하류수압_전:kg2(b.p[dn]),하류수압_후:kg2(r.p[dn])};}),
+      ...closed.map(l=>({잠금:linkName(l)})),...opened.map(l=>({열기:linkName(l)}))],
+    수압이_바뀐_절점:live.length,해당_수도미터:mCount(live),
+    수압_전_kgf:sb?{최저:kg2(sb.min),평균:kg2(sb.avg),최고:kg2(sb.max)}:null,수압_후_kgf:sa?{최저:kg2(sa.min),평균:kg2(sa.avg),최고:kg2(sa.max)}:null,
+    수압부족_1점5미만_전:sb?{절점:sb.lowN.length,수도미터:mCount(sb.lowN)}:null,수압부족_1점5미만_후:sa?{절점:sa.lowN.length,수도미터:mCount(sa.lowN)}:null,
+    단수_절점:cut.length,단수_수도미터:mCount(cut),해석_불안정:!!r.unbal,
+    안내:"임시 시뮬레이션입니다. 화면의 [저장]을 눌러야 저장됩니다."};
+  // 지도 표시
+  const st8=new Uint8Array(NN);for(const i of live)st8[i]=1;for(const i of cut)st8[i]=2;const links=new Map();
+  for(let l=0;l<NL;l++){const x=st8[N1[l]],y=st8[N2[l]];if(!x&&!y)continue;if(x===2||y===2){links.set(l,{c:css("--cut"),w:2.6});continue;}const pm=Math.min(isNaN(r.p[N1[l]])?99:r.p[N1[l]],isNaN(r.p[N2[l]])?99:r.p[N2[l]]);links.set(l,{c:pcol(pm),w:2.4});}
+  const tags=[...chg.map(l=>{const [x,y]=linkMid(l);return {x,y,kind:"n",c:"#7b2cbf",text:`설정 ${kg2(NET.links.set[l])}→${kg2(settings[l])}`};}),...closed.map(l=>{const [x,y]=linkMid(l);return {x,y,kind:"x",text:"잠금"};}),...opened.map(l=>{const [x,y]=linkMid(l);return {x,y,kind:"o",text:"열기"};})];
+  SPLIT=null;OV={links,nodes:new Map(),pins:[],tags};
+  setLegend([{c:PCOL.low,t:"1.5 kgf/cm² 미만"},{c:PCOL.warn,t:"1.5~2.0"},{c:PCOL.ok,t:"2.0 이상"},{c:PCOL.high,t:"7.0 이상(과압)"},{c:css("--cut"),t:"단수"}]);
+  const show=aff.length?aff:chg.map(l=>N2[l]);if(show.length)fitNodes(show,60);redraw();
+  AI.scen={kind:"sim",label:out.변경.map(c=>c.감압밸브?`${c.감압밸브} ${c.설정압_전}→${c.설정압_후}`:c.잠금?`${c.잠금} 잠금`:`${c.열기} 열기`).join(", "),args:{hour,prv_settings:chg.map(l=>({id:NET.links.id[l],setting_m:settings[l]})),close_ids:closed.map(l=>NET.links.id[l]),open_ids:opened.map(l=>NET.links.id[l])},summary:out};
+  renderScen();return out;}
+
+/* ---- 도구 3: 비상연계 관로 신설 후보 (단일 관로 사고 시 N개 이상 단수되는 곳) ---- */
+function bridgeTree(){const V=NN+1,R=NN;const SRC=[];for(let i=0;i<NN;i++)if(NT[i]!==0)SRC.push(i);const sidx=new Int32Array(NN).fill(-1);SRC.forEach((s,k)=>sidx[s]=k);
+  const tin=new Int32Array(V).fill(-1),low=new Int32Array(V),pe=new Int32Array(V).fill(-1),pn=new Int32Array(V).fill(-1),tout=new Int32Array(V),it=new Int32Array(V),pre=[];
+  const nb=(v,k)=>{if(v===R)return k<SRC.length?[SRC[k],NL+k]:null;const d=ADJS[v+1]-ADJS[v];if(k<d){const l=ADJ[ADJS[v]+k];return [N1[l]===v?N2[l]:N1[l],l];}if(k===d&&sidx[v]>=0)return [R,NL+sidx[v]];return null;};
+  let t=0;const stack=[R];tin[R]=low[R]=t++;pre.push(R);
+  while(stack.length){const v=stack[stack.length-1];const r=nb(v,it[v]);
+    if(r===null){stack.pop();tout[v]=t-1;const p=pn[v];if(p>=0)low[p]=Math.min(low[p],low[v]);continue;}
+    it[v]++;const [w,e]=r;if(w<0||e===pe[v])continue;
+    if(tin[w]<0){tin[w]=low[w]=t++;pre.push(w);pe[w]=e;pn[w]=v;stack.push(w);}else low[v]=Math.min(low[v],tin[w]);}
+  const sub=new Float64Array(V);for(let k=pre.length-1;k>=0;k--){const v=pre[k];if(v<NN&&CN)sub[v]+=CN[v];if(pn[v]>=0)sub[pn[v]]+=sub[v];}
+  const isBr=new Uint8Array(V),bAnc=new Int32Array(V).fill(-1);
+  for(const v of pre){if(v===R)continue;if(pe[v]>=0&&pe[v]<NL&&low[v]>tin[pn[v]])isBr[v]=1;bAnc[v]=isBr[v]?v:bAnc[pn[v]];}
+  return {R,tin,tout,pe,pn,sub,isBr,bAnc,pre};}
+async function toolPlan(a){const T=Math.max(1,+a.min_meters||300),cnt=Math.max(1,Math.min(6,+a.count||3)),maxLen=Math.max(50,Math.min(3000,+a.max_length_m||800));
+  await waitCN();aiNote("관망 연결 구조(사고 시 단수되는 가지관) 분석 중…");await new Promise(r=>setTimeout(r,20));
+  const B=bridgeTree();const {tin,tout,pe,pn,sub,isBr,bAnc,pre}=B;
+  const kids=new Map();for(const v of pre){if(!isBr[v])continue;const pb=bAnc[pn[v]];if(!kids.has(pb))kids.set(pb,[]);kids.get(pb).push(v);}
+  const tops=(kids.get(-1)||[]).filter(v=>sub[v]>=T);
+  const ok=new Uint8Array(NN);for(let i=0;i<NN;i++)ok[i]=NT[i]===0&&tin[i]>=0&&bAnc[i]===-1?1:0;
+  const plans=[];
+  for(const v0 of tops){let cur=v0,branch=false;for(;;){const hk=(kids.get(cur)||[]).filter(c=>sub[c]>=T);if(hk.length===1){cur=hk[0];continue;}branch=hk.length>1;break;}
+    let best=null;const lo=tin[cur],hi=tout[cur];
+    for(let k=lo;k<=hi;k++){const u=pre[k];if(u>=NN||NT[u]!==0)continue;
+      const ci=Math.floor((X[u]-GX0)/CELL),cj=Math.floor((Y[u]-GY0)/CELL),rr=Math.ceil(maxLen/CELL);
+      for(let j=cj-rr;j<=cj+rr;j++)for(let i=ci-rr;i<=ci+rr;i++){if(i<0||j<0||i>=GW||j>=GH)continue;const c=GRIDN[j*GW+i];for(let q=0;q<c.length;q++){const w=c[q];if(!ok[w])continue;const d=Math.hypot(X[w]-X[u],Y[w]-Y[u]);if(d>maxLen||d<5)continue;if(!best||d<best.d)best={u,w,d};}}}
+    if(!best)continue;
+    // 신설 후 남는 최대 단수: u의 조상 경로가 아닌 가지관 사고
+    let rem=0;for(let k=tin[v0];k<=tout[v0];k++){const c=pre[k];if(!isBr[c])continue;if(tin[c]<=tin[best.u]&&tin[best.u]<=tout[c])continue;rem=Math.max(rem,sub[c]);}
+    const top=pe[v0];const dia=Math.max(100,Math.min(200,DIA[top]||100));
+    plans.push({v0,top,u:best.u,w:best.w,d:best.d,len:Math.round(best.d*1.2),before:sub[v0],after:rem,branch,dia,dm:NET.dmas[DMA[best.u]]||NET.dmas[DMA[v0]]||"",dong:dongAt(X[best.u],Y[best.u])});}
+  plans.sort((x,y)=>((x.after>=T)-(y.after>=T))||x.d-y.d||y.before-x.before);
+  const sel=plans.slice(0,cnt);AI.plans=sel;drawPlans(sel,-1);
+  return {조건:`단일 관로 사고 시 기존 경계밸브를 열어도 수도미터 ${T}개 이상 단수되는 구역`,해당_구역수:tops.length,검토가능_구역수:plans.length,
+    후보:sel.map((p,k)=>({순위:k+1,위치:(p.dm||"")+(p.dong?" ("+p.dong+")":""),사고시_단수_수도미터:p.before,신설후_최대단수:p.after,목표달성:p.after<T,
+      신설관_연장_m:p.len,직선거리_m:Math.round(p.d),권장관경_mm:p.dia,연결:`절점 ${NET.nodes.id[p.u]} ↔ 절점 ${NET.nodes.id[p.w]}`,취약관로:linkName(p.top)})),
+    안내:"연장은 직선거리×1.2 추정입니다. 실제 노선(하천·도로 횡단, 사유지)은 현장 확인이 필요합니다."};}
+function planCut(p){const b=cutSet([p.top],[]).cutN;const s=new Uint8Array(NN);for(const i of b)s[i]=1;const opn=[];for(let l=0;l<NL;l++){if(INIT[l]!==0)continue;if(s[N1[l]]!==s[N2[l]])opn.push(l);}
+  return {opn,cutN:opn.length?cutSet([p.top],opn).cutN:b};}
+function drawPlans(ps,focus){const links=new Map(),extra=[],tags=[];const B=AI._bt;
+  ps.forEach((p,k)=>{const f=focus<0||focus===k;extra.push({x1:X[p.u],y1:Y[p.u],x2:X[p.w],y2:Y[p.w],c:f?"#7b2cbf":"#b9a3d6"});
+    const mx=(X[p.u]+X[p.w])/2,my=(Y[p.u]+Y[p.w])/2;tags.push({x:mx,y:my,kind:"n",c:"#7b2cbf",text:`${k+1}안 신설 ${p.len}m`});const [x,y]=linkMid(p.top);tags.push({x,y,kind:"x",text:Math.hypot(x-mx,y-my)<150?"":`${k+1}안 사고 가정`});
+    if(f){const {cutN}=planCut(p);const s=new Uint8Array(NN);for(const i of cutN)s[i]=1;for(let l=0;l<NL;l++)if(s[N1[l]]||s[N2[l]])links.set(l,{c:"#ef8a17",w:2.2});}});
+  SPLIT=null;OV={links,nodes:new Map(),pins:[],tags,extra};
+  setLegend([{c:"#7b2cbf",t:"신설 비상연계관(안)"},{c:"#ef8a17",t:"사고 시 단수 구역"},{c:"#d92b2b",t:"✕ 취약 관로(사고 가정)",round:true}]);
+  const ns=[];ps.forEach((p,k)=>{if(focus<0||focus===k){ns.push(p.u,p.w);const {cutN}=planCut(p);for(const i of cutN)ns.push(i);}});if(ns.length)fitNodes(ns,60);redraw();}
+async function toolPlanFlow(a){const k=Math.max(1,+a.rank||1)-1;const p=AI.plans&&AI.plans[k];if(!p)throw new Error("먼저 신설 후보를 찾아야 합니다 (plan_new_links)");
+  const ok=await ensureEngine();if(!ok)throw new Error("이 기기에서 수리계산 엔진을 쓸 수 없습니다");aiNote(`신설안 ${k+1} 물 흐름 계산 중…`);
+  const h=HOUR;const add=[{n1:p.u,n2:p.w,len:p.len,dia:p.dia}];
+  const {cutN,opn}=planCut(p);const rb=await solve({hour:h,closed:[p.top],opened:opn});const ra=await solve({hour:h,closed:[p.top],opened:opn,added:add});
+  const rec=cutN.filter(i=>ra.conn[i]);const left=cutN.filter(i=>!ra.conn[i]);
+  const ovB=ovCut(cutN,null,[p.top],opn);const ovA=ovCut(left,rec,[p.top],opn);const ex={x1:X[p.u],y1:Y[p.u],x2:X[p.w],y2:Y[p.w],c:"#7b2cbf"};
+  ovA.extra=[ex];ovA.tags.push({x:(X[p.u]+X[p.w])/2,y:(Y[p.u]+Y[p.w])/2,kind:"n",c:"#7b2cbf",text:`신설 D${p.dia} ${p.len}m`});
+  const mB=mCount(cutN),mA=mCount(left);
+  SPLIT={ov:[ovB,ovA],labels:["① 사고 시 (신설 전)","② 신설관 있을 때"],sub:[`단수 ${mtxt(mB)}개`,`단수 ${mtxt(mA)}개`],flow:[null,null]};OV=ovA;
+  const set=flowSet([rb.q,ra.q],cutN);SPLIT.flow=[{set,q:rb.q,p:null},{set,q:ra.q,p:rb.q}];
+  setLegend([{c:css("--cut"),t:"단수"},{c:css("--ok"),t:"신설관으로 회복"},{c:"#7b2cbf",t:"신설관(안)"}]);
+  fitSplitOps(cutN,[p.top]);redraw();const qn=Math.abs(ra.qa&&ra.qa[0]||0);
+  // 신설관 끝 수압
+  let mn=1e9;for(const i of rec)if(!isNaN(ra.p[i]))mn=Math.min(mn,ra.p[i]);
+  AI.scen={kind:"plan",label:`신설안 ${k+1}: ${p.dm||""} ${p.len}m D${p.dia}`,plan:{u:NET.nodes.id[p.u],w:NET.nodes.id[p.w],top:NET.links.id[p.top],len:p.len,dia:p.dia},summary:{사고관로:linkName(p.top),단수_전:mB,단수_후:mA}};renderScen();
+  return {신설안:k+1,사고가정_관로:linkName(p.top),함께_여는_기존밸브:opn.map(linkName),단수_수도미터_신설전:mB,단수_수도미터_신설후:mA,신설관_유량_m3h:Math.round(qn/24*10)/10,회복구역_최저수압_kgf:mn<1e8?kg2(mn):null,해석_불안정:!!ra.unbal,
+    안내:"화면이 좌우(상하)로 나뉘어 신설 전/후 물 흐름을 보여줍니다. 임시 결과이며 [저장]을 눌러야 저장됩니다."};}
+
+/* ---- Claude 도구 정의 ---- */
+const AITOOLS=[
+ {name:"get_selection",description:"지도에서 사용자가 선택한(누른) 관로·밸브·절점의 제원과 현재 시각 해석값(관경, 관종, 수압 kgf/cm², 유량 m³/h, 감압밸브 설정압 등)을 돌려준다.",execute:()=>toolSelection()},
+ {name:"find_facility",description:"이름이나 ID 일부로 감압밸브·가압장·경계밸브·배수지·소블록을 찾는다. 결과의 ID를 다른 도구에 넘긴다.",inputSchema:{type:"object",properties:{query:{type:"string"}},required:["query"]},execute:i=>toolFind(i)},
+ {name:"get_element",description:"관로/밸브/절점 ID로 제원과 해석값을 돌려준다.",inputSchema:{type:"object",properties:{id:{type:"string"}},required:["id"]},execute:i=>toolElement(i)},
+ {name:"cut_impact",description:"관로 하나가 끊겼을 때(단수) 단수되는 절점 수와 수도미터 수. id 생략 시 선택한 관로.",inputSchema:{type:"object",properties:{id:{type:"string"}}},execute:i=>toolCut(i)},
+ {name:"simulate",description:"EPANET으로 감압밸브 설정압 변경, 관로·밸브 잠금/열기를 임시 시뮬레이션하고 지도에 수압 변화를 그린다. 설정압 단위는 m(1 kgf/cm²≈10 m). 선택한 감압밸브는 id를 'selected'로. 수압 변화 범위, 1.5 kgf/cm² 미만 수도미터 수, 단수 여부를 돌려준다.",
+  inputSchema:{type:"object",properties:{hour:{type:"number",description:"0~23, 생략 시 현재 기준시각"},prv_settings:{type:"array",items:{type:"object",properties:{id:{type:"string"},setting_m:{type:"number"}},required:["id","setting_m"]}},close_ids:{type:"array",items:{type:"string"}},open_ids:{type:"array",items:{type:"string"}}}},execute:i=>toolSimulate(i)},
+ {name:"plan_new_links",description:"관로 하나가 사고로 끊기면 수도미터 min_meters개 이상이 단수되는 가지관 구역을 찾고, 그걸 막는 가장 짧은 비상연계 관로 신설 위치를 count개 골라 지도에 그린다(직선거리 기준).",
+  inputSchema:{type:"object",properties:{min_meters:{type:"number"},count:{type:"number"},max_length_m:{type:"number",description:"신설관 최대 직선거리, 기본 800"}}},execute:i=>toolPlan(i)},
+ {name:"show_plan_flow",description:"plan_new_links 결과 중 rank번째 안에 대해, 취약 관로 사고 시 신설 전/후를 EPANET으로 계산해 화면을 반으로 나눠 물 흐름을 보여준다.",inputSchema:{type:"object",properties:{rank:{type:"number"}},required:["rank"]},execute:i=>toolPlanFlow(i)}];
+const AIRULES=`너는 K-water 광주수도지사 현장 직원이 쓰는 "광주 관망 모바일" 앱 안의 관망해석 도우미다. 앱에는 광주시 수리검토 관망(EPANET 2.2, 현재기준) 모델이 들어 있다.
+규칙:
+- 숫자는 반드시 도구 결과에서만 가져온다. 추측한 숫자를 만들지 않는다.
+- 수압은 kgf/cm²로 말하고 필요하면 괄호에 m를 쓴다 (1 kgf/cm² ≈ 10 m). 최소 권장 수압은 1.5 kgf/cm²로 본다.
+- 사용자가 "3키로", "3kg"처럼 말하면 3 kgf/cm² = 30 m로 바꿔 simulate에 넘긴다.
+- 시뮬레이션 결과는 임시이며 사용자가 화면의 [저장]을 눌러야 저장된다고 짧게 알려준다.
+- 답은 한국어로 짧게: 결론 먼저, 근거 숫자 2~4줄, 필요하면 다음 할 일 한 줄. 마크다운 표·제목은 쓰지 말고 **굵게** 정도만 쓴다.
+- 신설 관로 후보는 직선거리 추정이므로 현장 노선 확인이 필요하다고 덧붙인다.
+- 도구로 할 수 없는 일은 할 수 없다고 말한다.`;
+
+/* ---- 간이 분석(Claude 연결 없을 때) ---- */
+function parsePress(s){const m=s.match(/(\d+(?:\.\d+)?)\s*(kgf\/?cm2|kgf\/?cm²|kgf|키로|kg|k|m|미터|바|bar)?/i);if(!m)return null;let v=+m[1];const u=(m[2]||"").toLowerCase();
+  if(/^(m|미터)$/.test(u))return v;if(/kg|키로|^k$/.test(u))return v*10;if(/바|bar/.test(u))return v*10.2;return v<=10?v*10:v;}
+async function localAnswer(q){const s=q.replace(/\s+/g," ");const sel=SELN[0];
+  if(/비상\s*연계|신설|연계\s*관|연결\s*관/.test(s)&&/설치|신설|후보|어디|선정|만들/.test(s)){
+    const m=s.match(/(\d+)\s*개\s*(이상|넘)/);const c=s.match(/(\d+)\s*(군데|곳|개소|개\s*안)/);const r=await toolPlan({min_meters:m?+m[1]:300,count:c?+c[1]:3});
+    if(!r.후보.length)return `조건(단일 관로 사고 시 ${m?m[1]:300}개 이상 단수)에 해당하는 구역이 없거나, 800 m 안에 연결할 관망이 없습니다.`;
+    let t=`관로 하나가 끊기면 기존 경계밸브를 열어도 수도미터 **${m?m[1]:300}개 이상** 단수되는 구역이 ${r.해당_구역수}곳 있습니다. 신설관이 가장 짧은 ${r.후보.length}곳입니다.\n`;
+    r.후보.forEach(p=>{t+=`\n**${p.순위}안 ${p.위치}** · 신설 약 ${p.신설관_연장_m} m (D${p.권장관경_mm})\n  사고 시 단수 ${fmt(p.사고시_단수_수도미터)}개 → 신설 후 최대 ${fmt(p.신설후_최대단수)}개${p.목표달성?"":" (목표 미달)"}`;});
+    t+=`\n\n${r.안내}\n아래 [신설안 흐름 보기]로 사고 시 신설 전/후 물 흐름을 볼 수 있습니다.`;
+    if(/흐름|보여/.test(s)){try{const f=await toolPlanFlow({rank:1});t+=`\n\n1안 흐름: 단수 ${fmt(f.단수_수도미터_신설전)}개 → ${fmt(f.단수_수도미터_신설후)}개, 신설관 유량 약 ${f.신설관_유량_m3h} m³/h.`;}catch(e){}}
+    return t;}
+  const isPrv=sel&&sel.t==="l"&&LT[sel.i]===3;
+  if(/감압|PRV|설정|토출/.test(s)||(isPrv&&/\d/.test(s)&&/바꾸|변경|조정|올리|내리|하면|맞춰/.test(s))){
+    if(!isPrv)return "지도에서 감압밸브를 먼저 눌러 선택한 뒤 물어보세요. (예: 감압밸브를 길게 누르고 'AI에게 묻기')";
+    const l=sel.i;const want=/바꾸|변경|조정|올리|내리|으로\s*하|로\s*하|하면|설정해|맞춰/.test(s)?parsePress(s):null;
+    if(want==null){const sp=elemInfo(sel);return `**${linkName(l)}**의 설정압(토출압)은 **${(NET.links.set[l]/10).toFixed(2)} kgf/cm²** (${fmt(NET.links.set[l],0)} m)입니다.\n${hh2(HOUR)}:00 기준 상류 수압 ${sp["상류 수압"]}, 하류 수압 ${sp["하류 수압"]}.`;}
+    const r=await toolSimulate({prv_settings:[{id:NET.links.id[l],setting_m:want}]});const c=r.변경[0];
+    let t=`**${c.감압밸브}** 설정을 ${c.설정압_전} → **${c.설정압_후}**로 바꿔 계산했습니다 (${r.기준시각}).\n하류 수압 ${c.하류수압_전} → **${c.하류수압_후} kgf/cm²**`;
+    if(r.수압이_바뀐_절점){t+=`\n수압이 바뀐 곳: 절점 ${fmt(r.수압이_바뀐_절점)}개, 수도미터 ${mtxt(r.해당_수도미터)}개`;
+      if(r.수압_후_kgf)t+=`\n그 구역 최저 수압 ${r.수압_전_kgf.최저} → **${r.수압_후_kgf.최저} kgf/cm²**`;
+      t+=`\n1.5 kgf/cm² 미만 수도미터 ${mtxt(r.수압부족_1점5미만_전.수도미터)} → **${mtxt(r.수압부족_1점5미만_후.수도미터)}개**`;}else t+="\n관망 수압에는 거의 변화가 없습니다 (하류 수압이 설정보다 낮아 밸브가 그대로 열려 있는 경우 등).";
+    if(r.단수_수도미터)t+=`\n주의: 물이 끊기는 수도미터 ${fmt(r.단수_수도미터)}개`;
+    return t+"\n\n임시 결과입니다. 남기려면 [저장]을 누르세요.";}
+  if(/단수/.test(s)&&sel&&sel.t==="l"){const r=toolCut({});return `**${r.관로}**가 끊기면 수도미터 **${mtxt(r.단수_수도미터)}개**(절점 ${fmt(r.단수_절점)}개)가 단수됩니다.${r.영향_소블록.length?" 영향 소블록: "+r.영향_소블록.join(", "):""}`;}
+  if(/수압|압력|유량|유속|관경|관종|제원/.test(s)&&sel){const o=elemInfo(sel);return `**${o.이름}** (${o.기준시각} 기준)\n`+Object.entries(o).filter(([k])=>!/이름|ID|기준시각|설정압_m|종류/.test(k)).map(([k,v])=>`${k}: ${v}`).join("\n");}
+  return "간이 분석 모드에서는 이런 질문을 이해합니다.\n· \"300개 이상 단수 안 되게 비상연계 관로 신설 후보 3곳, 흐름도 보여줘\"\n· (감압밸브 선택 후) \"설정압 몇이야?\", \"3.0 kgf로 바꾸면?\"\n· (관로 선택 후) \"여기 수압·유량은?\", \"여기 끊기면 단수 몇 개?\"\n자유로운 질문은 claude.ai 안에서 열면 Claude가 답합니다.";}
+
+/* ---- 화면 ---- */
+function aiMd(t){return esc(t).replace(/\*\*(.+?)\*\*/g,"<b>$1</b>").replace(/\n/g,"<br>");}
+function aiNote(t){const k=AI.busy&&AI.log.length&&AI.log[AI.log.length-1].r==="a"?AI.log.length-1:AI.log.length;AI.log.splice(k,0,{r:"t",t});drawLog();}
+function drawLog(){const el=$("#aiLog");if(!el)return;el.innerHTML=AI.log.map(m=>`<div class="msg ${m.r}">${m.r==="a"?aiMd(m.t||"생각 중…"):esc(m.t)}</div>`).join("");el.scrollTop=el.scrollHeight;
+  const sb=$("#shBody");if(sb)sb.scrollTop=sb.scrollHeight;}
+function renderScen(){const el=$("#aiScen");if(!el)return;const s=AI.scen;
+  el.innerHTML=s?`<div class="opcard"><div class="ophead">임시 시뮬레이션 (저장 안 됨)</div><div style="font-size:13.5px">${esc(s.label)}</div><div class="actions" style="margin:8px 0 0"><button class="btn pri" id="aiSave">저장</button><button class="btn" id="aiDrop">취소</button></div></div>`:"";
+  if(!s)return;$("#aiSave").onclick=()=>{const L=store("aiSaved")||[];L.unshift({t:Date.now(),h:HOUR,...s});store("aiSaved",L.slice(0,30));AI.scen=null;toast("이 기기에 저장했습니다.");renderAI();};
+  $("#aiDrop").onclick=()=>{AI.scen=null;SPLIT=null;OV=null;setLegend(null);redraw();renderAI();};}
+function ctxLine(){const e=SELN[0];if(!e)return "";const nm=e.t==="l"?linkName(e.i):(NT[e.i]===1?resName(e.i):"절점 "+NET.nodes.id[e.i]);return nm;}
+function openAI(){renderAI();}
+function renderAI(){const mode=AI.sample?(AI.tools?"Claude 연결됨":"Claude 연결됨 (도구 미지원 → 간이 분석)"):AI.sample===undefined?"연결 확인 중…":"간이 분석 모드";
+  const saved=store("aiSaved")||[];const tgt=ctxLine();
+  openSheet("AI 분석",mode,`
+   <div class="ailog" id="aiLog"></div>
+   <div id="aiScen"></div>
+   ${AI.plans&&AI.plans.length?`<div class="actions">${AI.plans.map((p,k)=>`<button class="btn mini" data-pf="${k}">신설안 ${k+1} 흐름 보기</button>`).join("")}<button class="btn mini" id="aiAll">후보 전체 보기</button></div>`:""}
+   ${tgt?`<div class="aictx">대상: <b>${esc(tgt)}</b></div>`:""}
+   <div class="aiin"><textarea id="aiQ" rows="2" placeholder="${tgt?"이 지점에 대해 물어보세요 (예: 설정압은? 3.0으로 바꾸면?)":"관망에 대해 물어보세요"}"></textarea>
+    <button class="btn pri" id="aiGo">${AI.busy?"중지":"보내기"}</button></div>
+   ${AI.log.length?"":`<div class="aiex">${["300개 이상 단수 안 되게 비상연계 관로 신설 후보 3곳 선정하고 흐름 보여줘","(감압밸브 선택 후) 설정압 몇으로 돼 있어?","(감압밸브 선택 후) 2.5 kgf로 바꾸면 하류 수압 충분해?","(관로 선택 후) 여기 끊기면 단수 몇 개야?"].map(t=>`<button class="btn mini" data-ex="${esc(t)}">${esc(t)}</button>`).join("")}</div>`}
+   ${AI.sample?"":`<p class="note">이 화면은 Claude 연결 없이 정해진 질문 유형만 이해합니다. claude.ai에서 열면 Claude가 자유 질문에 답하고 같은 도구로 계산합니다.</p>`}
+   ${saved.length?`<details class="alt"><summary>저장된 시뮬레이션 ${saved.length}개</summary><div class="tbl"><table><tbody>${saved.map((s,k)=>`<tr><td>${esc(s.label)}<br><span class="note num" style="margin:0">${new Date(s.t).toLocaleString("ko-KR")} · ${hh2(s.h)}:00</span></td><td style="white-space:nowrap"><button class="btn mini" data-sv="${k}">다시 보기</button> <button class="btn mini" data-sd="${k}">삭제</button></td></tr>`).join("")}</tbody></table></div></details>`:""}`,"half");
+  drawLog();renderScen();const B=$("#shBody");
+  B.querySelectorAll("[data-ex]").forEach(b=>b.onclick=()=>{$("#aiQ").value=b.dataset.ex.replace(/^\(.+?\)\s*/,"");$("#aiQ").focus();});
+  B.querySelectorAll("[data-pf]").forEach(b=>b.onclick=()=>runTool(()=>toolPlanFlow({rank:+b.dataset.pf+1})));
+  $("#aiAll")&&($("#aiAll").onclick=()=>drawPlans(AI.plans,-1));
+  B.querySelectorAll("[data-sv]").forEach(b=>b.onclick=()=>{const s=saved[+b.dataset.sv];if(s.kind==="sim")runTool(()=>toolSimulate({...s.args}));else if(s.plan){idIndex();const p={u:NIDX.get(String(s.plan.u)),w:NIDX.get(String(s.plan.w)),top:findLinkId(s.plan.top),len:s.plan.len,dia:s.plan.dia,dm:""};AI.plans=[p];runTool(()=>toolPlanFlow({rank:1}));}});
+  B.querySelectorAll("[data-sd]").forEach(b=>b.onclick=()=>{saved.splice(+b.dataset.sd,1);store("aiSaved",saved);renderAI();});
+  const q=$("#aiQ");q.onkeydown=e=>{if(e.key==="Enter"&&!e.shiftKey&&!e.isComposing){e.preventDefault();$("#aiGo").click();}};
+  $("#aiGo").onclick=()=>{if(AI.busy){AI.ctl&&AI.ctl.abort();return;}const t=q.value.trim();if(!t)return;q.value="";ask(t);};}
+async function runTool(fn){try{AI.keepOV=true;const r=await fn();if(CUR==="ai")renderAI();return r;}catch(e){toast(e.message||String(e));}finally{AI.keepOV=false;}}
+async function ask(text){AI.log.push({r:"u",t:text});const msg={r:"a",t:""};AI.log.push(msg);AI.busy=true;renderAI();
+  const tgt=ctxLine();
+  try{if(AI.sample&&AI.tools){AI.ctl=new AbortController();
+      const ctx=`현재 기준시각 ${hh2(HOUR)}:00.`+(tgt?` 사용자가 지도에서 선택한 대상: ${tgt} (get_selection으로 제원 확인 가능).`:" 선택한 대상 없음.");
+      AI.turns.push({role:"user",content:text});const turns=[{role:"user",content:AIRULES+"\n\n"+ctx},...AI.turns.slice(-8)];if(turns.length>1&&turns[1].role!=="user")turns.splice(1,1);
+      const tools=AITOOLS.map(t=>({...t,execute:async(i)=>{AI.keepOV=true;try{return await t.execute(i||{});}finally{AI.keepOV=false;}}}));
+      const res=await AI.sample(turns,{tools,signal:AI.ctl.signal,onText:({text})=>{msg.t=text;drawLog();}});
+      msg.t=res.text;AI.turns.push({role:"assistant",content:res.text});}
+    else{AI.keepOV=true;msg.t=await localAnswer(text);AI.keepOV=false;}}
+  catch(e){AI.keepOV=false;const c=e&&e.code;if(c==="cancelled")msg.t=(e.text||"")+"\n(중지됨)";
+    else if(c==="not_granted"||c==="sampling_disabled"||c==="tools_unavailable"||c==="capability_disabled"){AI.sample=null;msg.t=await localAnswer(text).catch(x=>"계산 중 오류: "+x.message);}
+    else if(c==="rate_limited")msg.t=(e.text||"")+"\n요청이 많아 잠시 후 다시 시도하세요.";
+    else if(c)msg.t=(e.text||"")+"\nClaude 응답 오류("+c+"). 다시 시도하세요.";
+    else msg.t="계산 중 오류: "+(e.message||e);}
+  AI.busy=false;AI.ctl=null;if(CUR==="ai")renderAI();}
+
+/* ============ GIS 시설 레이어 (소화전·관말·제수밸브·신규관로) ============ */
+let GF=null;
+layers=Object.assign({gHyd:true,gEnd:true,gVal:false,gNew:false},layers);
+const VOPN={SAE001:"열림",SAE002:"닫힘",SAE999:"기타"};
+async function loadFac(){try{const buf=await fetchGz("fac.json.gz.txt");const o=JSON.parse(new TextDecoder().decode(buf));
+  const P=a=>({x:a[0]/10,y:a[1]/10});
+  GF={h:o.h.map(a=>({...P(a),cal:a[2],id:a[4]})),e:o.e.map(a=>({...P(a),cal:a[2],id:a[3]})),v:o.v.map(a=>({...P(a),cal:a[2],fom:a[3],op:a[4],id:a[5]})),
+    np:o.np.map(a=>{const c=a[5];const pts=[];for(let i=0;i<c.length;i+=2)pts.push([c[i]/10,c[i+1]/10]);return {cls:a[0],dia:a[1],kind:a[2],yr:a[3],id:a[4],pts,closed:!!a[6]};})};
+  // 이토 지점 추천에 실제 관말·소화전 연결
+  FAC=[...GF.e.map(f=>({x:f.x,y:f.y,k:"관말(이토)",id:f.id})),...GF.h.map(f=>({x:f.x,y:f.y,k:"소화전",id:f.id}))];
+  GF.grid=new Map();const put=(t,i,f)=>{const k=Math.floor(f.x/200)+","+Math.floor(f.y/200);if(!GF.grid.has(k))GF.grid.set(k,[]);GF.grid.get(k).push([t,i]);};
+  GF.h.forEach((f,i)=>put("h",i,f));GF.e.forEach((f,i)=>put("e",i,f));GF.v.forEach((f,i)=>put("v",i,f));
+  redraw();if(CUR==="flush")openChapter("flush");}catch(e){console.warn("GIS 시설",e);}}
+function gfIn(x0,y0,x1,y1,cb){if(!GF)return;for(let i=Math.floor(x0/200);i<=Math.floor(x1/200);i++)for(let j=Math.floor(y0/200);j<=Math.floor(y1/200);j++){const a=GF.grid.get(i+","+j);if(a)for(const [t,k] of a)cb(t,GF[t][k]);}}
+function drawGis(C){if(!GF)return;const s=view.s;const x0=wx(VP.ox-20),x1=wx(VP.ox+VP.w+20),y0=wy(VP.oy+VP.h+20),y1=wy(VP.oy-20);
+  if(layers.gNew&&s>0.02){const col={A:"#14995a",B:"#ef8a17",C:"#d92b2b"};C.lineWidth=1.8;C.setLineDash([5,4]);
+    for(const k of ["A","B","C"]){C.strokeStyle=col[k];C.beginPath();for(const p of GF.np){if(p.cls!==k)continue;const q=p.pts;let inb=false;for(const [x,y] of q)if(x>x0&&x<x1&&y>y0&&y<y1){inb=true;break;}if(!inb)continue;C.moveTo(sx(q[0][0]),sy(q[0][1]));for(let i=1;i<q.length;i++)C.lineTo(sx(q[i][0]),sy(q[i][1]));}C.stroke();}C.setLineDash([]);}
+  if(s<0.12)return;const big=s>0.5;
+  gfIn(x0,y0,x1,y1,(t,f)=>{const X_=sx(f.x),Y_=sy(f.y);
+    if(t==="h"&&layers.gHyd){C.fillStyle="#e53935";C.strokeStyle="#fff";C.lineWidth=1.2;C.beginPath();C.arc(X_,Y_,big?4.2:3.2,0,6.283);C.fill();C.stroke();}
+    else if(t==="e"&&layers.gEnd){C.fillStyle="#1565c0";C.strokeStyle="#fff";C.lineWidth=1.2;const r=big?3.6:2.8;C.fillRect(X_-r,Y_-r,r*2,r*2);C.strokeRect(X_-r,Y_-r,r*2,r*2);}
+    else if(t==="v"&&layers.gVal&&s>0.25){const r=big?3.6:2.6;C.fillStyle=f.op==="SAE002"?"#d92b2b":"#222";C.beginPath();C.moveTo(X_-r,Y_-r);C.lineTo(X_+r,Y_+r);C.lineTo(X_+r,Y_-r);C.lineTo(X_-r,Y_+r);C.closePath();C.fill();}});}
+function gisHit(px,py){if(!GF||view.s<0.12)return null;const r=10/view.s;const x=wx(px),y=wy(py);let best=null,bd=10;
+  gfIn(x-r,y-r,x+r,y+r,(t,f)=>{if((t==="h"&&!layers.gHyd)||(t==="e"&&!layers.gEnd)||(t==="v"&&(!layers.gVal||view.s<=0.25)))return;const d=Math.hypot(sx(f.x)-px,sy(f.y)-py);if(d<bd){bd=d;best={t,f};}});
+  if(!best&&layers.gNew){for(const p of GF.np){for(let i=0;i<p.pts.length-1;i++){const [ax,ay]=p.pts[i],[bx,by]=p.pts[i+1];const dx=bx-ax,dy=by-ay,L2=dx*dx+dy*dy;const t=L2?Math.max(0,Math.min(1,((x-ax)*dx+(y-ay)*dy)/L2)):0;const d=Math.hypot(sx(ax+t*dx)-px,sy(ay+t*dy)-py);if(d<bd){bd=d;best={t:"np",f:p};}}}}
+  return best;}
+function showGis(h){const f=h.f;const [la,lo]=toLatLon(f.x!=null?f.x:f.pts[0][0],f.y!=null?f.y:f.pts[0][1]);
+  const T={h:"소화전",e:"관말(이토)",v:"제수밸브 등",np:"GIS 신규 관로"}[h.t];const CL={A:"보완본 반영(영향 없음 확인)",B:"검토 필요(수압·흐름 변화 큼)",C:"연결 오류(모델과 이어지지 않음)"};
+  const kv=h.t==="np"?[["분류",CL[f.cls]],["관경",f.dia+" mm"],["관종",f.kind],["설치년도",f.yr||"–"],["관리번호",f.id],...(f.closed?[["비고","닫힘 코드 밸브 있음"]]:[])]
+   :[["구경",f.cal?f.cal+" mm":"–"],...(h.t==="v"?[["개폐 코드",(VOPN[f.op]||f.op||"–")+(f.op?" ("+f.op+")":"")]]:[]),["관리번호",f.id],["출처","GIS 관망도"]];
+  openSheet(T,"GIS 관망도 자료",`<div class="card"><div class="hd"><span class="tag">${T}</span><b>${esc(T)} ${esc(f.id)}</b><a class="btn" style="height:28px;padding:0 8px;font-size:12px" target="_blank" rel="noopener" href="https://map.kakao.com/link/map/${encodeURIComponent(T)},${la.toFixed(6)},${lo.toFixed(6)}">카카오맵</a></div>
+   <div class="kv">${kv.map(([a,b])=>`<div><span>${esc(a)}</span><b>${esc(String(b))}</b></div>`).join("")}</div></div>${h.t==="v"?`<p class="note">개폐 코드의 뜻(열림/닫힘)은 GIS 코드표로 확인이 필요합니다.</p>`:""}`,sheetState==="closed"?"peek":undefined);}
+</script>
+</body></html>

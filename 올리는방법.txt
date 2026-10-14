@@ -1,0 +1,29 @@
+광주 관망 모바일 - 공개판 (GPS 사용 가능)
+
+[가장 쉬운 방법: Netlify Drop]
+1. PC 브라우저로 https://app.netlify.com/drop 접속
+2. 이 폴더(gwangju-net)를 통째로 화면에 끌어다 놓기
+3. 몇 초 뒤 https://xxxx.netlify.app 주소가 생김 → 폰에서 열기
+4. 무료 회원가입(로그인) 후 "Claim"을 눌러야 주소가 계속 유지됨 (안 하면 1시간 뒤 삭제)
+
+[다른 방법] GitHub Pages, Cloudflare Pages 등 https 정적 호스팅이면 어디든 가능
+ - 파일을 압축 풀지 말고(.txt 그대로) 폴더째 올리기
+ - 반드시 https 주소여야 GPS가 동작함
+
+[공개판 차이]
+ - 수용가: 이름·연락처·고객번호는 없음. 주소, 상호명, 수도미터번호, 구경, 업종, 가구수는 표시
+ - 장소 검색: 앱에 들어있는 장소명(OpenStreetMap)·상호명 + 동·번지 검색 기본 제공
+ - 카카오 장소·주소 검색까지 쓰려면 config.js 에 카카오 JavaScript 키를 넣기(파일 안 설명 참고)
+ - 주소를 아는 사람은 누구나 볼 수 있음 (검색엔진 노출만 막아둠)
+
+[GitHub Pages로 올리기 - lichlha12-tech/gwangju-net]
+1. 저장소 화면 → Add file → Upload files → 이 폴더 안의 파일 10개를 끌어다 놓기
+2. 아래로 내려 초록색 [Commit changes] 버튼 누르기 (이걸 눌러야 실제로 올라감)
+3. 저장소 위쪽 Settings → 왼쪽 메뉴 Pages
+4. Build and deployment: Source = "Deploy from a branch", Branch = "main" / "/(root)" → Save
+5. 1~3분 뒤 https://lichlha12-tech.github.io/gwangju-net/ 로 접속 (Pages 화면 맨 위에 주소가 뜸)
+
+[업데이트할 때]
+ - Claude에서 고친 내용은 GitHub 주소에 자동으로 반영되지 않음
+ - 새로 받은 파일을 Upload files로 다시 올리고 Commit changes 하면 같은 주소에 반영(1~3분)
+ - 보통 index.html만 바뀌고, 자료가 바뀌면 .txt 파일도 함께 올리기
