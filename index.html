@@ -176,6 +176,40 @@ tr.sel td{background:rgba(20,153,90,.08)}
 .aiin{display:flex;gap:6px;align-items:stretch;margin:4px 0}.aiin textarea{flex:1;min-width:0;font:inherit;font-size:15px;padding:8px 10px;border:1px solid #bdbdbd;border-radius:6px;resize:none}
 .aiin .btn{flex:none}
 .aiex{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}.aiex .btn.mini{white-space:normal;text-align:left;height:auto;padding:6px 9px}
+/* 모바일 한 화면 맞춤 */
+.chips{overflow:visible}
+.chip{flex:1 1 auto;justify-content:center;padding:0 8px;min-width:0}
+.chip select{max-width:64px}
+.tabs{display:grid;grid-template-columns:repeat(5,1fr);overflow:visible;padding:0 6px;margin:8px -16px 0}
+.tabs button{padding:8px 2px 7px;font-size:13px;text-align:center;letter-spacing:-.3px}
+@media (min-width:720px){.tabs{grid-template-columns:repeat(10,1fr)}}
+@media (max-width:360px){.tabs button{font-size:12px}.chip{font-size:12.5px;padding:0 6px}}
+/* 범례 */
+.lgx{margin:6px 0 10px}.lgh{font-size:12px;font-weight:700;color:var(--muted);margin:4px 0}
+.lgi{display:flex;align-items:center;gap:10px;padding:3px 0;font-size:13.5px}.lgi img{flex:none;border:1px solid #e3e3e3;border-radius:3px;background:#f2f0eb}
+/* 물차·병물 */
+.seg{display:flex;border:1px solid var(--rule);border-radius:6px;overflow:hidden;margin:4px 0 10px}.seg button{flex:1;border:0;background:var(--surface);padding:9px 4px;font-size:13.5px;cursor:pointer}.seg button.on{background:var(--accent);color:#fff;font-weight:700}.seg button:disabled{opacity:.4}
+.wform{display:flex;flex-direction:column;gap:2px;margin:8px 0}
+.wrow{display:grid;grid-template-columns:1fr 104px 42px;align-items:center;gap:6px;padding:4px 0;border-bottom:1px solid #eee;font-size:13.5px}
+.wrow input,.wrow select{font:inherit;padding:6px 8px;border:1px solid #bdbdbd;border-radius:4px;text-align:right;width:100%;min-width:0}.wrow select{grid-column:2/4;text-align:left}
+.wrow em{font-style:normal;color:var(--muted);font-size:12px}.wrow small{grid-column:1/4;color:var(--muted);font-size:11.5px;margin-top:-2px}
+.wres{border-radius:8px;padding:10px 12px;display:grid;grid-template-columns:1fr 1fr;gap:6px 12px;background:#f5f7fb;border:1px solid #dfe6f1}
+.wres.bad{background:#fdf3f2;border-color:#f3cfcb}.wres.good{background:#f1f9f4;border-color:#cde9d7}
+.wres div{display:flex;flex-direction:column}.wres span{font-size:11.5px;color:var(--muted)}.wres b{font-size:16px}
+.wres .wj{grid-column:1/3;font-weight:700;font-size:14px}.wres.bad .wj{color:#c62828}.wres.good .wj{color:#14995a}
+.wres div:last-child{grid-column:1/3}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:60;display:flex;align-items:center;justify-content:center;padding:12px}.modal[hidden]{display:none}
+.mbox{background:#fff;border-radius:10px;max-width:760px;width:100%;max-height:88vh;overflow:auto;padding:12px 14px}
+.mhd{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px}.mhd b{font-size:16px}
+table.calc td{vertical-align:top;font-size:12.5px}table.calc td.f{font-family:var(--f-data,monospace);font-size:11.5px;color:#333}table.calc small{color:var(--muted)}
+.wrow{grid-template-columns:minmax(0,1fr) 96px 40px}.wrow input{width:96px;box-sizing:border-box}
+.csteps{display:flex;flex-direction:column;gap:6px;margin:8px 0}
+.cstep{border:1px solid #e3e6ea;border-radius:8px;padding:8px 10px}
+.cstep .ch{display:flex;align-items:baseline;gap:6px}.cstep .no{color:var(--accent);font-weight:700;min-width:18px}.cstep .lb{flex:1;font-size:13.5px}.cstep b{font-size:14.5px;white-space:nowrap}
+.cstep .cf{font-size:12px;color:#444;margin-top:3px;font-family:var(--f-data,monospace);word-break:break-all}.cstep .cn{font-size:11.5px;color:var(--muted);margin-top:3px}
+.seg button small{font-weight:400;font-size:11.5px;opacity:.85}
+.srcnote{margin:12px 0 4px;padding:10px 12px;background:#f6f7f9;border-radius:8px;font-size:12px;color:#4a5563;line-height:1.55}.srcnote b{color:#222}
+.tpsum{font-size:13.5px;margin:2px 0 6px;line-height:1.5}
 </style>
 
 <canvas id="map" aria-label="관망도"></canvas>
@@ -193,9 +227,9 @@ tr.sel td{background:rgba(20,153,90,.08)}
   <div class="results" id="results" hidden></div>
   <div class="chips" id="chips">
     <label class="chip" title="기준 시각"><svg viewBox="0 0 24 24" width="14" height="14" style="stroke:currentColor;fill:none;stroke-width:2"><circle cx="12" cy="12" r="8.5"/><path d="M12 7v5l3 2"/></svg><select id="hour" aria-label="기준 시각"></select></label>
-    <button class="chip" id="chipSim"><svg viewBox="0 0 24 24" width="14" height="14" style="stroke:currentColor;fill:none;stroke-width:2"><path d="M4 12h5M15 12h5M9 8v8M15 8v8"/></svg>단수 시뮬레이션</button>
-    <button class="chip" id="chipEngine" title="수리계산 엔진 상태"><span class="dot" id="engDot"></span><span id="engTxt">엔진 대기</span></button>
-    <button class="chip" id="chipLayers">표시</button>
+    <button class="chip" id="chipSim"><svg viewBox="0 0 24 24" width="14" height="14" style="stroke:currentColor;fill:none;stroke-width:2"><path d="M4 12h5M15 12h5M9 8v8M15 8v8"/></svg>단수</button>
+    <button class="chip" id="chipEngine" title="수리계산 엔진 상태"><span class="dot" id="engDot"></span><span id="engTxt">엔진</span></button>
+    <button class="chip" id="chipLayers">표시·범례</button>
   </div>
   <div class="here" id="here" hidden><b id="hereT"></b><span id="hereF"></span></div>
 </div>
@@ -575,14 +609,14 @@ $("#shClose").onclick=()=>setSheet(sheetState==="peek"?"half":"peek");
 function placeFloating(){const b=sheetH();$("#legend").style.bottom=`calc(${b+12}px + env(safe-area-inset-bottom,0px))`;$("#editbar").style.bottom=`calc(${b+14}px + env(safe-area-inset-bottom,0px))`;$("#banner").style.top=`calc(env(safe-area-inset-top,0px) + 108px)`;}
 function setLegend(items){const lg=$("#legend");if(!items||!items.length){lg.hidden=true;return;}lg.innerHTML=items.map(i=>`<div class="row"><span class="sw" style="background:${i.c}${i.round?";height:10px;width:10px;border-radius:50%":""}"></span><span class="lab">${esc(i.t)}</span></div>`).join("");lg.hidden=false;placeFloating();}
 
-const CHAPTERS=[["sel","선택"],["ai","AI"],["up","급수원"],["down","급수구역"],["cut","단수"],["link","비상연계"],["flow","물 흐름"],["flush","이토"],["cust","수용가"]];
+const CHAPTERS=[["sel","선택"],["ai","AI"],["up","급수원"],["down","급수구역"],["cut","단수"],["link","비상연계"],["flow","물 흐름"],["flush","이토"],["cust","수용가"],["water","물차·병물"]];
 let CUR=null;
-function chapterEnabled(c){if(c==="sel"||c==="ai")return true;const has=SELN.length>0;return has;}
+function chapterEnabled(c){if(c==="sel"||c==="ai"||c==="water")return true;const has=SELN.length>0;return has;}
 function renderTabs(){const t=$("#tabs");t.innerHTML=CHAPTERS.map(([k,n])=>`<button data-c="${k}" class="${k===CUR?"on":""}" ${chapterEnabled(k)?"":"disabled"}>${n}</button>`).join("");
   t.onclick=e=>{const b=e.target.closest("button");if(!b||b.disabled)return;openChapter(b.dataset.c);};
   const on=t.querySelector(".on");if(on)on.scrollIntoView({block:"nearest",inline:"nearest"});}
 function openChapter(c){if(c!=="flow")stopFlow();if(c!=="link"&&c!=="ai")SPLIT=null;if(c!=="ai"&&AI.scen&&!AI.keepOV){AI.scen=null;}CUR=c;
-  ({ai:openAI,sel:showSelection,up:traceUp,down:traceDown,cut:openCut,link:openLink,flow:openFlow,flush:openFlush,cust:openCust})[c]();renderTabs();}
+  ({water:openWater,ai:openAI,sel:showSelection,up:traceUp,down:traceDown,cut:openCut,link:openLink,flow:openFlow,flush:openFlush,cust:openCust})[c]();renderTabs();}
 
 /* ============ 초기화 (X / Esc) ============ */
 function resetAll(){if(typeof AI!=="undefined"){try{AI.ctl&&AI.ctl.abort();}catch(e){}AI.log=[];AI.turns=[];AI.scen=null;AI.plans=null;AI.busy=false;}stopFlow();SPLIT=null;SELN=[];SC=null;OV=null;PIN=null;CUR=null;LAST=null;setEdit(false);setLegend(null);hideCtx();hideResults();$("#q").value="";$("#chipSim").classList.remove("on");
@@ -592,7 +626,7 @@ addEventListener("keydown",e=>{if(e.key==="Escape"){if(!$("#results").hidden){hi
 
 /* ============ hour ============ */
 let HOUR=new Date().getHours();let LAST=null;
-(()=>{const s=$("#hour");for(let h=0;h<24;h++){const o=document.createElement("option");o.value=h;o.textContent=hh2(h)+":00 기준";s.appendChild(o);}s.value=HOUR;
+(()=>{const s=$("#hour");for(let h=0;h<24;h++){const o=document.createElement("option");o.value=h;o.textContent=hh2(h)+"시";s.appendChild(o);}s.value=HOUR;
   s.onchange=()=>{HOUR=+s.value;toast(`${hh2(HOUR)}시 해석 결과로 다시 계산합니다.`);if(SC){SC.q={};}if(CUR)openChapter(CUR);else redraw();};})();
 
 /* ============ 선택 장: 제원 ============ */
@@ -720,12 +754,12 @@ function traceDown(){const srcs=downSources();if(!srcs.length){openChapter("sel"
 /* ============ 수리계산 엔진 ============ */
 const ENG={st:"idle",w:null,seq:0,pend:new Map(),base:new Map(),p:null};
 function setEng(st,txt){ENG.st=st;$("#engDot").className="dot "+(st==="ready"?"ready":st==="loading"||st==="busy"?"busy":st==="failed"?"fail":"");$("#engTxt").textContent=txt;}
-function ensureEngine(){if(ENG.p)return ENG.p;setEng("loading","엔진 준비 중");
+function ensureEngine(){if(ENG.p)return ENG.p;setEng("loading","엔진…");
   ENG.p=(async()=>{const buf=await fetchGz("sim.inp.gz.txt");const inp=new TextDecoder().decode(buf);
     const w=new Worker("engine.js");ENG.w=w;w.onmessage=e=>{const p=ENG.pend.get(e.data.id);if(p){ENG.pend.delete(e.data.id);e.data.ok?p.res(e.data.r):p.rej(new Error(e.data.error));}};
     w.onerror=()=>{for(const p of ENG.pend.values())p.rej(new Error("엔진 오류"));ENG.pend.clear();};
     await call("init",{inp,topo:{nn:NN,nl:NL,n1:Array.from(N1),n2:Array.from(N2),init:Array.from(INIT),nt:Array.from(NT)}},90000);
-    setEng("ready","EPANET 준비됨");return true;})().catch(err=>{console.warn(err);setEng("failed","엔진 사용 불가");ENG.p=Promise.resolve(false);return false;});
+    setEng("ready","엔진");return true;})().catch(err=>{console.warn(err);setEng("failed","엔진✕");ENG.p=Promise.resolve(false);return false;});
   return ENG.p;}
 function call(type,payload,timeout=60000){return new Promise((res,rej)=>{const id=++ENG.seq;ENG.pend.set(id,{res,rej});ENG.w.postMessage({type,id,...payload});setTimeout(()=>{if(ENG.pend.has(id)){ENG.pend.delete(id);rej(new Error("시간 초과"));}},timeout);});}
 async function solve(args){return call("solve",{args});}
@@ -784,7 +818,7 @@ function openCut(){const sc=computeCut();SPLIT=null;
    <div class="kv"><div><span>단수 절점</span><b>${fmt(sc.cutN.length)}</b></div><div><span>영향 수요량</span><b>${fmt(S.dem,0)} m³/일</b></div><div><span>영향 소블록</span><b>${S.rows.length}개</b></div></div>
    ${sc.cutN.length?"":`<div class="callout good">이 관로가 끊겨도 다른 관로로 물이 들어가서 단수되는 곳이 없습니다.</div>`}
    ${S.rows.length?`<div class="tbl"><table><thead><tr><th>소블록</th><th class="r">단수 수용가</th><th class="r">수요량 m³/일</th></tr></thead><tbody>${S.rows.map(r=>`<tr class="click" data-d="${r.d}"><td>${esc(NET.dmas[r.d]||"블록 미지정")}</td><td class="r num">${CN?fmt(r.m):"…"}</td><td class="r num">${fmt(r.dem,0)}</td></tr>`).join("")}</tbody></table></div>`:""}
-   <div class="actions">${sc.cutN.length?`<button class="btn pri" data-go="link">비상연계 찾기 →</button><button class="btn" data-go="cust">단수 수용가 목록</button>`:""}<button class="btn" data-go="flush">복구 후 이토 지점</button></div>
+   <div class="actions">${sc.cutN.length?`<button class="btn pri" data-go="link">비상연계 찾기 →</button><button class="btn" data-go="water">물차·병물 계산</button><button class="btn" data-go="cust">단수 수용가 목록</button>`:""}<button class="btn" data-go="flush">복구 후 이토 지점</button></div>
    <p class="note">선택한 관로가 끊겼을 때 어느 급수원과도 이어지지 않는 곳을 단수로 봅니다. 다른 관로로 물이 들어갈 수 있는 곳은 단수가 아닙니다.</p>`);
   $("#shBody").querySelectorAll("[data-go]").forEach(b=>b.onclick=()=>openChapter(b.dataset.go));wireRows();
   if(sc.cutN.length)fitNodes(sc.cutN,60);else{const [x,y]=linkMid(sc.closed[0]);flyTo(x,y,Math.max(view.s,0.3));}redraw();}
@@ -1036,7 +1070,7 @@ function showDma(d){const links=new Map();const col=hueCol(d);let len=0,cnt=0,de
   wireRows();fitNodes(ns);}
 
 /* ============ 표시 설정 ============ */
-$("#chipLayers").onclick=()=>{CUR=null;renderTabs();openSheet("표시 설정","",`<div class="list-ops">
+$("#chipLayers").onclick=()=>{CUR=null;renderTabs();openSheet("표시·범례","",`<details class="alt" open><summary>범례 (지도 기호)</summary>${legendHtml()}</details><div class="list-ops">
   ${[["base","배경지도 (OpenStreetMap)"],["gHyd","소화전 (GIS)"],["gEnd","관말·이토 (GIS)"],["gVal","제수밸브 등 (GIS, 확대 시)"],["gNew","GIS 신규 관로 (보완 검토)"],["meters","단수 수도미터 위치(□)"],["nodes","절점 표시"],["dong","행정동 경계·이름"],["facil","배수지·가압장·감압밸브"],["valves","경계밸브·폐쇄관로 (확대 시)"],["labels","시설 이름"]].map(([k,t])=>`<label class="op"><span class="nm">${t}</span><input type="checkbox" data-k="${k}"${layers[k]?" checked":""}></label>`).join("")}</div>
   <p class="note">배경지도: © OpenStreetMap 기여자 (ODbL). 관망: 광주시 수리검토 관망(현재기준).inp · 절점 ${fmt(NN)} · 관로 ${fmt(NL)} · 해석 00~23시</p>`,"half");
   $("#shBody").querySelectorAll("input[data-k]").forEach(i=>i.onchange=()=>{layers[i.dataset.k]=i.checked;store("layers",layers);redraw();});};
@@ -1330,5 +1364,169 @@ function showGis(h){const f=h.f;const [la,lo]=toLatLon(f.x!=null?f.x:f.pts[0][0]
    :[["구경",f.cal?f.cal+" mm":"–"],...(h.t==="v"?[["개폐 코드",(VOPN[f.op]||f.op||"–")+(f.op?" ("+f.op+")":"")]]:[]),["관리번호",f.id],["출처","GIS 관망도"]];
   openSheet(T,"GIS 관망도 자료",`<div class="card"><div class="hd"><span class="tag">${T}</span><b>${esc(T)} ${esc(f.id)}</b><a class="btn" style="height:28px;padding:0 8px;font-size:12px" target="_blank" rel="noopener" href="https://map.kakao.com/link/map/${encodeURIComponent(T)},${la.toFixed(6)},${lo.toFixed(6)}">카카오맵</a></div>
    <div class="kv">${kv.map(([a,b])=>`<div><span>${esc(a)}</span><b>${esc(String(b))}</b></div>`).join("")}</div></div>${h.t==="v"?`<p class="note">개폐 코드의 뜻(열림/닫힘)은 GIS 코드표로 확인이 필요합니다.</p>`:""}`,sheetState==="closed"?"peek":undefined);}
+
+/* ============ 범례 (표시 시트) ============ */
+function legIcon(kind){const c=document.createElement("canvas");const W_=34,H_=20,d=2;c.width=W_*d;c.height=H_*d;const g=c.getContext("2d");g.scale(d,d);g.lineCap="round";g.lineJoin="round";
+  const line=(col,w,dash)=>{g.strokeStyle=col;g.lineWidth=w;g.setLineDash(dash||[]);g.beginPath();g.moveTo(3,10);g.lineTo(31,10);g.stroke();g.setLineDash([]);};
+  const cx=17,cy=10;
+  switch(kind){
+   case "pipe":line("#222",1.4);break;
+   case "closed":line("#222",1,[3,3]);break;
+   case "node":line("#222",1.2);g.fillStyle="#222";g.beginPath();g.arc(cx,cy,2,0,6.283);g.fill();break;
+   case "res":g.fillStyle=css("--accent");g.strokeStyle="#fff";g.lineWidth=1.5;g.fillRect(cx-5.5,cy-5.5,11,11);g.strokeRect(cx-5.5,cy-5.5,11,11);break;
+   case "pump":g.fillStyle="#7b5cd6";g.beginPath();g.moveTo(cx,cy-5.5);g.lineTo(cx+5,cy+4);g.lineTo(cx-5,cy+4);g.closePath();g.fill();break;
+   case "prv":g.fillStyle="#c2410c";g.beginPath();g.moveTo(cx,cy-5);g.lineTo(cx+5,cy);g.lineTo(cx,cy+5);g.lineTo(cx-5,cy);g.closePath();g.fill();break;
+   case "tcvO":g.strokeStyle=css("--ok");g.fillStyle="#fff";g.lineWidth=1.4;g.beginPath();g.arc(cx,cy,3.8,0,6.283);g.fill();g.stroke();break;
+   case "tcvC":g.strokeStyle="#141414";g.fillStyle="#fff";g.lineWidth=1.4;g.beginPath();g.arc(cx,cy,3.8,0,6.283);g.fill();g.stroke();g.beginPath();g.moveTo(cx-2.2,cy-2.2);g.lineTo(cx+2.2,cy+2.2);g.moveTo(cx+2.2,cy-2.2);g.lineTo(cx-2.2,cy+2.2);g.stroke();break;
+   case "hyd":g.fillStyle="#e53935";g.strokeStyle="#fff";g.lineWidth=1.2;g.beginPath();g.arc(cx,cy,3.6,0,6.283);g.fill();g.stroke();break;
+   case "end":g.fillStyle="#1565c0";g.fillRect(cx-3.2,cy-3.2,6.4,6.4);break;
+   case "valve":g.fillStyle="#222";g.beginPath();g.moveTo(cx-3.5,cy-3.5);g.lineTo(cx+3.5,cy+3.5);g.lineTo(cx+3.5,cy-3.5);g.lineTo(cx-3.5,cy+3.5);g.closePath();g.fill();break;
+   case "newA":line("#14995a",1.8,[5,4]);break;case "newB":line("#ef8a17",1.8,[5,4]);break;case "newC":line("#d92b2b",1.8,[5,4]);break;
+   case "sel":g.globalAlpha=.6;line(SELC,4);g.globalAlpha=1;break;
+   case "cut":line(css("--cut"),2.6);break;case "rec":line(css("--ok"),2.6);break;
+   case "flow":line("#1556b8",2,[6,7]);g.fillStyle="#1556b8";g.beginPath();g.moveTo(31,10);g.lineTo(25,6.5);g.lineTo(25,13.5);g.closePath();g.fill();break;
+   case "lock":g.fillStyle="#fff";g.strokeStyle="#d92b2b";g.lineWidth=1.6;g.beginPath();g.arc(cx,cy,5.5,0,6.283);g.fill();g.stroke();g.beginPath();g.moveTo(cx-2.6,cy-2.6);g.lineTo(cx+2.6,cy+2.6);g.moveTo(cx+2.6,cy-2.6);g.lineTo(cx-2.6,cy+2.6);g.stroke();break;
+   case "open":g.fillStyle="#fff";g.strokeStyle="#14995a";g.lineWidth=1.6;g.beginPath();g.arc(cx,cy,5.5,0,6.283);g.fill();g.stroke();g.fillStyle="#14995a";g.beginPath();g.arc(cx,cy,2.8,0,6.283);g.fill();break;
+   case "plan":line("#7b2cbf",2.6,[7,5]);break;
+   case "dong":line("rgba(140,120,160,.8)",1.2,[6,4]);break;
+   case "flush":g.fillStyle="#1565c0";g.strokeStyle="#fff";g.lineWidth=1.5;g.beginPath();g.arc(cx,cy,7,0,6.283);g.fill();g.stroke();g.fillStyle="#fff";g.font="700 9px sans-serif";g.textAlign="center";g.textBaseline="middle";g.fillText("1",cx,cy+.5);break;
+   case "gps":g.fillStyle="rgba(26,115,232,.18)";g.beginPath();g.arc(cx,cy,8,0,6.283);g.fill();g.fillStyle="#1a73e8";g.strokeStyle="#fff";g.lineWidth=2;g.beginPath();g.arc(cx,cy,4.5,0,6.283);g.fill();g.stroke();break;
+  }
+  return c.toDataURL();}
+const LEGEND=[["관망",[["pipe","관로 (관경과 관계없이 같은 굵기)"],["closed","평상시 닫힌 관로 (점선)"],["node","절점 (확대 시)"],["res","배수지·정수장"],["pump","가압장"],["prv","감압밸브"],["tcvO","경계밸브 (열림)"],["tcvC","경계밸브 (닫힘)"],["dong","행정동 경계"]]],
+ ["GIS 시설",[["hyd","소화전"],["end","관말 (이토)"],["valve","제수밸브 등 (확대 시)"],["newA","GIS 신규 관로 – 보완본 반영"],["newB","GIS 신규 관로 – 검토 필요"],["newC","GIS 신규 관로 – 연결 오류"]]],
+ ["분석 결과",[["sel","선택한 관로·시설"],["cut","단수 구역"],["rec","비상연계로 회복"],["flow","물 흐르는 방향 (움직이는 점선)"],["lock","잠글 밸브·사고 지점"],["open","열 밸브"],["plan","신설 비상연계관(안)"],["flush","이토 지점 (번호 = 순서)"],["gps","내 위치"]]]];
+function legendHtml(){return LEGEND.map(([h,arr])=>`<div class="lgx"><div class="lgh">${h}</div>${arr.map(([k,t])=>`<div class="lgi"><img alt="" src="${legIcon(k)}" width="34" height="20"><span>${esc(t)}</span></div>`).join("")}</div>`).join("");}
+
+/* ============ 물차·병물 (급수 대책) ============ */
+const RESDATA={"산성배수지":[5.7,5.7,5.7,5.7,5.7,5.7,5.7,5.7,5.7,5.7,5.7,5.7,5.7,5.7,5.7,5.7,5.7,5.7,5.7,5.7,5.7,5.7,5.7,5.7],"도마배수지":[159.5,121.0,99.8,99.7,81.1,99.5,119.5,179.4,237.2,258.5,259.1,259.1,239.2,239.2,220.1,219.3,200.3,218.4,239.2,259.0,259.1,259.1,239.9,199.4],"쌍령배수지":[1251.3,1116.4,1022.4,887.9,887.9,887.9,887.9,1116.4,1439.3,1574.1,1574.1,1574.1,1574.1,1480.2,1480.2,1480.2,1480.2,1480.2,1480.2,1574.1,1668.1,1533.7,1533.7,1439.3],"학동배수지":[119.3,104.4,89.5,89.5,89.5,89.5,104.4,134.2,164.0,178.9,178.9,178.9,178.9,178.9,164.0,164.0,164.0,164.0,178.9,193.8,178.9,178.9,164.0,149.1],"오향배수지":[143.0,125.2,107.2,107.2,107.2,107.2,125.2,160.9,196.6,214.5,214.5,214.5,214.5,214.5,214.5,214.5,214.5,214.5,214.5,214.5,214.5,196.6,178.8,160.9],"진우배수지":[243.2,189.2,162.2,162.2,162.2,162.2,189.2,243.2,324.3,324.3,324.3,351.2,324.3,324.3,324.3,297.3,297.3,297.3,324.3,324.3,324.3,297.3,270.2,243.2],"능평배수지":[797.0,797.0,717.4,717.4,638.0,557.9,557.9,637.7,797.0,876.7,876.7,955.9,956.4,876.7,876.7,876.7,797.5,797.0,797.0,876.7,876.7,876.7,876.7,797.0],"신현(저지)배수지":[132.6,116.8,87.8,59.2,59.0,58.8,73.1,114.8,159.8,184.0,184.0,184.1,184.1,171.2,171.2,171.2,158.3,158.3,172.6,171.2,184.0,184.0,171.2,158.3],"신현(고지)배수지":[541.5,443.4,333.7,216.6,216.6,216.6,266.4,379.1,575.6,546.6,541.5,541.5,541.5,541.5,541.5,541.5,541.5,541.5,595.8,545.9,541.5,541.5,541.5,541.5],"1정수":[597.0,521.6,406.4,357.9,375.2,440.3,605.1,836.2,935.3,972.5,958.1,933.5,913.2,917.7,872.5,861.7,888.4,927.4,1019.3,1093.8,1045.1,1002.2,903.6,776.2],"2정수":[3770.4,3459.7,3077.7,2961.4,2623.9,2623.9,2637.1,3060.8,3808.3,4219.3,4232.0,4319.7,4319.7,4332.7,4215.1,3951.8,3863.9,3863.9,4129.6,4244.7,4484.7,4471.3,4206.7,4164.9],"3정수":[1222.2,978.4,855.7,733.5,733.5,733.5,733.5,977.9,1222.2,1466.2,1466.9,1466.9,1466.9,1466.9,1346.7,1344.7,1344.7,1344.7,1344.7,1466.9,1466.9,1466.9,1466.9,1344.7],"목현배수지":[99.3,74.5,49.7,37.2,37.2,49.7,74.5,124.1,161.4,161.4,161.4,149.0,136.5,136.5,136.5,124.1,124.1,136.5,149.0,173.8,186.2,173.8,161.4,136.5]}; // EPANET 시간별 유출량(m³/h)
+// 배수지 시설물 현황(25년).hwpx: 시설용량, 설계수위(H.W.L/L.W.L), '25년 공급량(일최대/일평균), 공급가능시간(시설용량÷일최대×24)
+const RESSPEC={"쌍령배수지":{cap:10000,hwl:108.0,lwl:103.0,qmax:38088,qavg:33323,hr:6.3},"진우배수지":{cap:3000,hwl:174.5,lwl:170.0,qmax:7154,qavg:5862,hr:10.1},
+ "오향배수지":{cap:2000,hwl:174.5,lwl:170.0,qmax:5572,qavg:3834,hr:8.6},"학동배수지":{cap:2000,hwl:171.7,lwl:166.7,qmax:5935,qavg:5362,hr:8.1},
+ "능평배수지":{cap:4000,hwl:180.0,lwl:175.0,qmax:7357,qavg:6561,hr:13.0},"신현(고지)배수지":{cap:5000,hwl:290.0,lwl:285.0,qmax:12964,qavg:10983,hr:9.3},
+ "신현(저지)배수지":{cap:2000,hwl:210.0,lwl:205.0,qmax:4093,qavg:3463,hr:11.7},"도마배수지":{cap:2000,hwl:108.0,lwl:103.0,qmax:5970,qavg:5208,hr:8.0},
+ "목현배수지":{cap:1600,hwl:185.0,lwl:180.0,qmax:3344,qavg:2666,hr:11.5},"산성배수지":{cap:500,hwl:357.7,lwl:352.7,qmax:441,qavg:261,hr:27.2}};
+const DEADM=0.5; // 사수위 0.5 m (현황 자료 기준)
+const WK={lpcd:300,pph:2};
+function resList(){return Object.keys(RESSPEC);}
+function resSaved(n){const s=RESSPEC[n]||{};const dead=s.hwl?+(DEADM/(s.hwl-s.lwl)).toFixed(3):0;return Object.assign({cap:s.cap||"",q:s.qavg||"",dead},store("resin2_"+n)||{});}
+const rup=(x,d)=>{const m=10**d;return Math.ceil(x*m-1e-9)/m;},rdn=(x,d)=>{const m=10**d;return Math.floor(x*m+1e-9)/m;};
+function hhOf(nodes){if(!CU||!CS)return null;let s=0,c=0;for(const n of nodes)for(let j=CS[n];j<CS[n+1];j++){s+=CU.hh[CI[j]]||1;c++;}return {hh:s,m:c};}
+function srcOfCut(nodes){if(!nodes.length)return null;const n=nodes[Math.floor(nodes.length/2)];try{const ch=flowChain(n,HOUR);const s=ch&&ch[0];const r=RES.find(i=>resName(i)===s||NET.nodes.id[i]===s);return r!=null?NET.nodes.id[r]:null;}catch(e){return null;}}
+function resArea(rid){const r=RES.find(i=>NET.nodes.id[i]===rid);if(r==null)return [];const {f}=downFracMulti([r],HOUR);const out=[];for(let i=0;i<NN;i++)if(NT[i]===0&&f[i]>=0.5)out.push(i);return out;}
+let WC={mode:null,res:null,last:null};
+function waterCalc(p){ // 전단(배수지 유입 중단): 물차산정식 + 병물 / 후단(관로 사고): 병물만
+  const S=[];const add=(no,lab,formula,sub,val,unit,note)=>{S.push({no,lab,formula,sub,val,unit,note});return val;};
+  const v1=p.t;
+  if(p.mode==="down"){
+    const L=(p.hh||0)*WK.pph*WK.lpcd*v1/24;
+    add("","배수지 후단 사고","배수지는 정상이지만 사고 관로 아래가 단수 → 급수차로 배수지를 채워도 단수 구역에 물이 가지 않음","—","병물 공급만 계산","");
+    add("","단수 가구수","단수 구역 수용가의 가구수 합",`수용가 ${fmt(p.m||0)}개`,p.hh||0,"가구");
+    add("","병물 공급량","가구수×2인×300 L/인·일×①/24",`${fmt(p.hh||0)}×${WK.pph}×${WK.lpcd}×${v1}/24`,Math.ceil(L),"L","단수시간 = ① 예상 복구시간");
+    add("","2 L 병 환산","올림(병물 공급량/2)",`${fmt(Math.ceil(L))}/2`,Math.ceil(L/2),"병");
+    return {S,mode:"down",L,hrs:v1};}
+  const v2=p.q,v3=p.cap,v4=p.rate,vd=p.dead||0,v7=p.truck,v8=p.dist,v11=p.fill,v12=p.drain;
+  const eff=Math.max(0,v4-vd);
+  const v5=add("⑤","공급가능시간","((③×(④−사수위율))/②×24)−1 (소수 둘째 자리 버림)",`((${fmt(v3)}×(${v4}−${vd}))/${fmt(v2)}×24)−1`,Math.max(0,rdn((v3*eff)/v2*24-1,2)),"hr","사수위율 = 사수위 0.5 m ÷ (H.W.L−L.W.L)");
+  const v6=add("⑥","배수지 부족량","⑤≥① 이면 0, 아니면 올림((②/24)×(①−⑤))",v5>=v1?`${v5} ≥ ${v1} → 0`:`올림((${fmt(v2)}/24)×(${v1}−${v5}))`,v5>=v1?0:Math.ceil((v2/24)*(v1-v5)-1e-9),"ton");
+  const need=v6>0;add("","급수차 운영 필요여부","⑥>0 이면 필요",`${fmt(v6)}>0 → ${need?"필요":"불필요"}`,need?"급수차 운영 필요":"급수차 운영 불필요","");
+  const v9=add("⑨","배수지 도착 소요시간","올림(⑧/50, 소수 첫째 자리) (속도 50 km/h)",`올림(${v8}/50)`,rup(v8/50,1),"hr");
+  const v10=add("⑩","충수지점 복귀 소요시간","올림(⑧/50, 소수 첫째 자리)",`올림(${v8}/50)`,rup(v8/50,1),"hr");
+  const cyc=v9+v10+v11+v12;
+  const v15=add("⑮","급수차 최대 운영 가능대수","올림((⑨+⑩+⑪+⑫)/(⑪+0.2))",`올림((${v9}+${v10}+${v11}+${v12})/(${v11}+0.2))`,Math.ceil(cyc/(v11+0.2)-1e-9),"대","충수지점에서 차례로 물을 받는다고 보고 한 바퀴 도는 동안 받을 수 있는 대수");
+  const v13=add("⑬","복구시간 내 최대 급수차 공급량","올림(((①−3)−(⑨+⑪+⑫))/(⑪+0.2))×⑦",`올림(((${v1}−3)−(${v9}+${v11}+${v12}))/(${v11}+0.2))×${v7}`,Math.max(0,Math.ceil(((v1-3)-(v9+v11+v12))/(v11+0.2)-1e-9))*v7,"ton","마지막 3시간은 여유로 뺌");
+  const trucks=[];const first=Math.max(0,Math.ceil((v1-(v9+v11+v12))/cyc-1e-9)+1),more=Math.max(0,Math.ceil(((v1-3)-(v9+v11+v12))/cyc-1e-9)+1);
+  for(let k=1;k<=Math.max(1,v15);k++){const trips=first+(k-1)*more;trucks.push({k,trips,ton:trips*v7});}
+  add("","대수별 수급량","1대: (올림((①−(⑨+⑪+⑫))/(⑨+⑩+⑪+⑫))+1)×⑦, 2대부터 한 대마다 (올림(((①−3)−(⑨+⑪+⑫))/(⑨+⑩+⑪+⑫))+1)×⑦",`1대 ${first}회, 추가 1대당 ${more}회`,trucks.map(t=>`${t.k}대 ${fmt(t.ton)}t`).join(", "),"");
+  const ok=v13>=v6;add("","급수차로 충분한가","⑬ ≥ ⑥ 이면 단수 없음",`${fmt(v13)} ${ok?"≥":"<"} ${fmt(v6)}`,ok?"급수차 운영 시 단수 없음":"급수차 운영에도 단수 발생, 병물 지원 필요","");
+  const best=trucks.find(t=>t.ton>=v6);
+  const short=Math.max(0,v6-v13);const hrs=short>0?short/(v2/24):0;const L=(p.hh||0)*WK.pph*WK.lpcd*hrs/24;
+  add("","급수차 부족분","⑥−⑬",`${fmt(v6)}−${fmt(v13)}`,short,"ton");
+  add("","단수시간(병물 기간)","부족분÷(②/24)",short?`${fmt(short)}÷(${fmt(v2)}/24)`:"부족분 0",rdn(hrs,2),"hr","급수차로 못 채운 양이 버티지 못하는 시간");
+  add("","병물 공급량","가구수×2인×300 L/인·일×단수시간/24",`${fmt(p.hh||0)}×${WK.pph}×${WK.lpcd}×${rdn(hrs,2)}/24`,Math.ceil(L),"L","가구수 = 이 배수지 주 급수구역(EPANET 흐름 50% 이상) 수용가 가구 합");
+  add("","2 L 병 환산","올림(병물 공급량/2)",`${fmt(Math.ceil(L))}/2`,Math.ceil(L/2),"병");
+  return {S,mode:"up",v5,v6,v13,v15,trucks,best,ok,need,L,hrs,short};}
+const SRCNOTE=`<div class="srcnote"><b>사용 자료</b><br>· 배수지 제원·공급량: 「배수지 시설물 현황(25년)」 — 시설용량, 설계수위(H.W.L·L.W.L), '25년 일최대·일평균 공급량, 사수위 0.5 m<br>· 급수구역·단수 구역: 광주시 수리검토 관망(EPANET 2.2, 현재기준)<br>· 가구수: 수용가 자료(수도미터, GIS 관망도 2026.10 보완분 포함)<br>· 병물 기준: 1인 1일 300 L, 가구당 2인 · 급수차 기본값: 15 t, 편도 60 km, 50 km/h, 충수·배수 각 0.5 hr</div>`;
+function truckPlan(sc,P,needTon){const cut=new Uint8Array(NN);for(const i of sc.cutN)cut[i]=1;
+  let pts=[];for(const n of sc.cutN){const w=CS?(CS[n+1]-CS[n]):0;if(w)pts.push({x:X[n],y:Y[n],w,n});}if(!pts.length)pts=sc.cutN.map(n=>({x:X[n],y:Y[n],w:1,n}));
+  const W=pts.reduce((a,p)=>a+p.w,0);const k=Math.min(pts.length,W<500?1:W<2000?2:3);
+  let cx=0,cy=0;for(const p of pts){cx+=p.x*p.w;cy+=p.y*p.w;}cx/=W;cy/=W;
+  let C=[{x:cx,y:cy}];while(C.length<k){let bp=null,bd=-1;for(const p of pts){const d=Math.min(...C.map(c=>Math.hypot(p.x-c.x,p.y-c.y)))*Math.sqrt(p.w);if(d>bd){bd=d;bp=p;}}C.push({x:bp.x,y:bp.y});}
+  let as=[];for(let it=0;it<12;it++){as=pts.map(p=>{let bi=0,bd=1e18;C.forEach((c,i)=>{const d=Math.hypot(p.x-c.x,p.y-c.y);if(d<bd){bd=d;bi=i;}});return bi;});
+    C=C.map((c,i)=>{let sx_=0,sy_=0,sw=0;pts.forEach((p,j)=>{if(as[j]===i){sx_+=p.x*p.w;sy_+=p.y*p.w;sw+=p.w;}});return sw?{x:sx_/sw,y:sy_/sw,w:sw}:c;});}
+  // 급수 지점: 각 무리의 중심에서 가장 가까운 (수용가 있는) 절점
+  const del=C.filter(c=>c.w).map((c,i)=>{let bn=pts[0].n,bd=1e18,hh=0;pts.forEach((p,j)=>{if(as[j]!==C.indexOf(c))return;const d=Math.hypot(p.x-c.x,p.y-c.y);if(d<bd){bd=d;bn=p.n;}});
+    for(const p of pts.filter((p,j)=>as[j]===C.indexOf(c)))for(let j=CS?CS[p.n]:0;CS&&j<CS[p.n+1];j++)hh+=CU.hh[CI[j]]||1;
+    let addr="";if(CS)for(let j=CS[bn];j<CS[bn+1]&&!addr;j++)addr=CU.r[CI[j]]||CU.a[CI[j]]||"";return {x:X[bn],y:Y[bn],n:bn,m:c.w,hh,addr};});
+  // 충수지점: 단수 구역 밖에서 물이 나오는 가장 가까운 소화전 (없으면 공급 배수지)
+  let fill=null;if(GF){let bd=1e18;for(const h of GF.h){const d=Math.hypot(h.x-cx,h.y-cy);if(d>=bd||d>8000)continue;const n=nearestNode(h.x,h.y,60);if(n<0||cut[n]||!sc.conn[n])continue;bd=d;fill={x:h.x,y:h.y,kind:"소화전",id:h.id,cal:h.cal};}}
+  if(!fill){const rid=srcOfCut(sc.cutN);const r=RES.find(i=>NET.nodes.id[i]===rid);if(r!=null)fill={x:X[r],y:Y[r],kind:"배수지",id:resName(r)};}
+  if(!fill)return null;
+  del.forEach(d=>{d.km=Math.max(0.1,Math.hypot(d.x-fill.x,d.y-fill.y)/1000*1.3);});
+  const km=del.reduce((a,d)=>a+d.km*d.hh,0)/Math.max(1,del.reduce((a,d)=>a+d.hh,0));
+  const v7=+P.truck,v11=+P.fill,v12=+P.drain,v1=+P.t,tt=Math.max(0.1,rup(km/30,1));const cyc=2*tt+v11+v12;
+  const first=Math.max(1,Math.ceil((v1-(tt+v11+v12))/cyc-1e-9)+1),more=Math.max(0,Math.ceil(((v1-3)-(tt+v11+v12))/cyc-1e-9)+1);
+  const cap=Math.ceil(cyc/(v11+0.2)-1e-9);const tripsNeed=Math.ceil(needTon/v7-1e-9);let n=0,trips=0;while(trips<tripsNeed&&n<200){n++;trips+=n===1?first:more;if(more===0&&n>=1)break;}
+  return {fill,del,km,tt,cyc,first,more,cap,tripsNeed,n,trips,ton:trips*v7,need:needTon,ok:trips>=tripsNeed,multi:n>cap};}
+function kakaoCar(a,an,b,bn){const [la,lo]=toLatLon(a.x,a.y),[lb,lob]=toLatLon(b.x,b.y);return `https://map.kakao.com/link/by/car/${encodeURIComponent(an)},${la.toFixed(6)},${lo.toFixed(6)}/${encodeURIComponent(bn)},${lb.toFixed(6)},${lob.toFixed(6)}`;}
+function openWater(){let sc=SC&&SC.cutN&&SC.cutN.length?SC:null;let noCut=false;
+  if(!sc&&SELN.length){const c=computeCut();if(c&&c.cutN.length)sc=c;else noCut=true;}
+  if(sc&&WC.scKey!==sc.key){WC.mode="down";WC.scKey=sc.key;}if(!WC.mode)WC.mode=sc?"down":"up";if(WC.mode==="down"&&!sc)WC.mode="up";
+  const auto=sc?srcOfCut(sc.cutN):null;if(!WC.res||!RESSPEC[WC.res])WC.res=auto&&RESSPEC[auto]?auto:resList()[0];
+  const rs=resSaved(WC.res);const sp=RESSPEC[WC.res]||{};const P=Object.assign({t:15,rate:0.7,truck:15,dist:60,fill:0.5,drain:0.5},store("wcin")||{});
+  let hh=null,area=null;if(WC.mode==="down")hh=hhOf(sc.cutN);else{area=resArea(WC.res);hh=hhOf(area);}
+  const inp=(id,lab,val,unit,hint)=>`<label class="wrow"><span>${lab}</span><input id="${id}" type="number" inputmode="decimal" step="any" value="${val}"><em>${unit}</em>${hint?`<small>${hint}</small>`:""}</label>`;
+  const R=waterCalc({mode:WC.mode,t:+P.t,q:+rs.q,cap:+rs.cap,rate:+P.rate,dead:+rs.dead,truck:+P.truck,dist:+P.dist,fill:+P.fill,drain:+P.drain,hh:hh?hh.hh:0,m:hh?hh.m:0});WC.last=R;
+  const TP=WC.mode==="down"&&sc&&R.L>0?truckPlan(sc,P,Math.ceil(R.L/1000)):null;WC.tp=TP;
+  if(TP){const S=R.S;const ad=(lab,f,sub,val,unit,note)=>S.push({no:"",lab,formula:f,sub,val,unit,note});
+    ad("[참고] 급수차 직접 급수 필요량","병물 공급량을 물로 환산 (1,000 L = 1 ton)",`${fmt(Math.ceil(R.L))} L ÷ 1000`,TP.need,"ton");
+    ad("충수지점","단수 구역 밖에서 물이 나오는 가장 가까운 "+(TP.fill.kind),`${TP.fill.kind} ${TP.fill.id}`,"-","","");
+    ad("편도거리(가구 가중 평균)","직선거리×1.3 (도로 우회 보정)",TP.del.map((d,i)=>`급수${i+1} ${d.km.toFixed(1)}km`).join(", "),rdn(TP.km,1),"km");
+    ad("편도 소요시간","올림(편도거리/30, 소수 첫째 자리) (시내 30 km/h)",`올림(${TP.km.toFixed(2)}/30)`,TP.tt,"hr");
+    ad("한 바퀴 시간","편도×2 + ⑪ 충수 + ⑫ 배수",`${TP.tt}×2+${P.fill}+${P.drain}`,rdn(TP.cyc,2),"hr");
+    ad("대당 급수 횟수","1대: 올림((①−(편도+⑪+⑫))/한바퀴)+1, 2대부터 올림(((①−3)−(편도+⑪+⑫))/한바퀴)+1",`1대 ${TP.first}회, 추가 ${TP.more}회`,`${TP.first} / ${TP.more}`,"회");
+    ad("필요 급수차","필요량÷⑦ 만큼 횟수를 채우는 최소 대수",`${TP.tripsNeed}회 필요 → ${TP.n}대 ${TP.trips}회`,TP.n,"대",TP.multi?`충수지점 한 곳 최대 ${TP.cap}대 → 충수지점을 늘려야 함`:"");}
+  const bott=`<div><span>병물 (${fmt(hh?hh.hh:0)}가구×2인×300L)</span><b>${R.L>0?`${fmt(Math.ceil(R.L/1000),0)} ㎥ · 2L ${fmt(Math.ceil(R.L/2))}병`:"필요 없음"}</b></div>`;
+  const stat=WC.mode==="up"?`<div class="wres ${R.ok?"good":"bad"}">
+     <div><span>⑤ 공급가능시간</span><b>${R.v5} hr</b></div><div><span>⑥ 배수지 부족량</span><b>${fmt(R.v6)} ton</b></div>
+     <div><span>⑮ 급수차 최대</span><b>${R.v15} 대</b></div><div><span>⑬ 급수차 최대 공급</span><b>${fmt(R.v13)} ton</b></div>
+     <div class="wj">${!R.need?"● 배수지 저류량으로 복구시간까지 버팀":R.ok?`● 급수차 ${R.best?R.best.k+"대":""} 운영 시 단수 없음`:`● 급수차 운영에도 부족 ${fmt(R.short)} ton → 병물 지원 필요`}</div>${bott}</div>`
+   :`<div class="wres bad"><div class="wj">● 배수지 후단 사고: 급수차로 배수지를 채워도 단수 구역에 물이 가지 않아 병물로 공급</div>
+     <div><span>단수 수용가</span><b>${mtxt(hh?hh.m:null)}개 · ${fmt(hh?hh.hh:0)}가구</b></div><div><span>단수시간 (①)</span><b>${P.t} hr</b></div>${bott}</div>
+     ${TP?`<div class="opcard"><div class="ophead">참고 · 병물 대신 급수차로 직접 공급하면</div>
+       <div class="tpsum">필요 <b>${fmt(TP.need)} ton</b> → 급수차 ${P.truck} t <b>${TP.n}대</b> (총 ${TP.trips}회, 한 바퀴 ${rdn(TP.cyc,1)} hr)${TP.multi?`<br><span style="color:#c62828">충수지점 한 곳에서 최대 ${TP.cap}대까지 → 충수지점을 늘려야 합니다</span>`:""}</div>
+       <div class="opstep o"><span class="no">충</span><span class="nm"><b>충수: ${esc(TP.fill.kind)} ${esc(TP.fill.id)}</b><small>단수 구역 밖, 물이 나오는 가장 가까운 ${esc(TP.fill.kind)}${TP.fill.cal?" · 구경 "+TP.fill.cal+"mm":""}</small></span><button class="btn mini" data-tp="f">위치</button></div>
+       ${TP.del.map((d,i)=>`<div class="opstep x"><span class="no">${i+1}</span><span class="nm"><b>급수 ${i+1}: ${esc(d.addr||("절점 "+NET.nodes.id[d.n]))}</b><small>${fmt(d.hh)}가구 · 편도 약 ${d.km.toFixed(1)} km · 배분 ${Math.max(1,Math.round(TP.n*d.hh/Math.max(1,hh.hh)))}대</small></span><a class="btn mini" target="_blank" rel="noopener" href="${kakaoCar(TP.fill,"충수지점",d,"급수"+(i+1))}">길찾기</a></div>`).join("")}
+       <p class="note" style="margin:6px 0 0">지도의 점선이 충수지점 → 급수지점 경로(직선 표시)입니다. [길찾기]를 누르면 카카오맵 자동차 경로가 열립니다.</p></div>`:""}`;
+  openSheet("물차·병물",WC.mode==="up"?`${WC.res} 전단 사고 또는 배수지 사고`:`배수지 후단 관로 사고 (공급 배수지 추정 ${auto||"–"})`,`
+   <div class="seg"><button data-m="up" class="${WC.mode==="up"?"on":""}">배수지 전단·배수지 사고<br><small>물차 + 병물</small></button><button data-m="down" class="${WC.mode==="down"?"on":""}" ${sc?"":"disabled"}>배수지 후단 사고<br><small>병물만${sc?"":" (지도에서 관로 선택)"}</small></button></div>
+   ${stat}
+   <div class="actions"><button class="btn pri" id="wcDet">상세 계산내역 보기</button></div>
+   <div class="wform">
+    ${WC.mode==="up"?`<label class="wrow"><span>대상 배수지</span><select id="wRes">${resList().map(n=>`<option ${n===WC.res?"selected":""}>${esc(n)}</option>`).join("")}</select></label>`:""}
+    ${inp("w1","① 예상 복구시간",P.t,"hr")}
+    ${WC.mode==="up"?inp("w2","② 일평균 공급량",rs.q,"㎥/일",`'25년 일평균 (일최대 ${fmt(sp.qmax||0)})`)+inp("w3","③ 시설용량",rs.cap,"㎥",`설계수위 H.W.L ${sp.hwl} / L.W.L ${sp.lwl} m · 현황 공급가능시간 ${sp.hr} hr`)+inp("w4","④ 저수율",P.rate,"","사고 시점 수위 ÷ 만수위 (모르면 0.7)")+inp("wd","사수위율",rs.dead,"",`사수위 0.5 m ÷ 수심 ${(sp.hwl-sp.lwl).toFixed(1)} m`)
+      +inp("w7","⑦ 급수차 용량",P.truck,"ton")+inp("w8","⑧ 충수지점↔배수지 편도거리",P.dist,"km")+inp("w11","⑪ 충수시간",P.fill,"hr")+inp("w12","⑫ 배수시간",P.drain,"hr"):inp("w7","⑦ 급수차 용량 (참고 계산)",P.truck,"ton")+inp("w11","⑪ 충수시간",P.fill,"hr")+inp("w12","⑫ 배수시간",P.drain,"hr")}
+   </div>${SRCNOTE}`,"half");
+  const B=$("#shBody");B.querySelectorAll("[data-m]").forEach(b=>b.onclick=()=>{if(b.disabled)return;WC.mode=b.dataset.m;openWater();});
+  $("#wRes")&&($("#wRes").onchange=e=>{WC.res=e.target.value;openWater();});
+  B.querySelectorAll(".wform input").forEach(i=>i.onchange=()=>{const g=id=>{const e=$("#"+id);return e?e.value:undefined;};
+    const np={t:g("w1"),truck:g("w7"),fill:g("w11"),drain:g("w12")};if(WC.mode==="up"){Object.assign(np,{rate:g("w4"),truck:g("w7"),dist:g("w8"),fill:g("w11"),drain:g("w12")});store("resin2_"+WC.res,{cap:g("w3"),q:g("w2"),dead:g("wd")});}
+    for(const k in np)if(np[k]===undefined)delete np[k];store("wcin",Object.assign(store("wcin")||{},np));openWater();});
+  $("#wcDet").onclick=()=>showCalcDetail(R,{hh,mode:WC.mode,res:WC.res,auto});
+  if(WC.mode==="up"&&area){const s=new Uint8Array(NN);for(const i of area)s[i]=1;const links=new Map();for(let l=0;l<NL;l++)if(s[N1[l]]&&s[N2[l]])links.set(l,{c:"rgba(30,110,220,.55)",w:2.2});SPLIT=null;OV={links,nodes:new Map(),pins:[],tags:[]};setLegend([{c:"rgba(30,110,220,.8)",t:WC.res+" 주 급수구역"}]);redraw();}
+  else if(WC.mode==="down"&&sc){OV=ovCut(sc.cutN,null,sc.closed,[]);const lg=[{c:css("--cut"),t:"단수 구역 (병물 공급 대상)"}];
+    if(TP){OV.extra=TP.del.map(d=>({x1:TP.fill.x,y1:TP.fill.y,x2:d.x,y2:d.y,c:"#1565c0"}));OV.tags.push({x:TP.fill.x,y:TP.fill.y,kind:"n",c:"#1565c0",text:"충수 "+TP.fill.kind});TP.del.forEach((d,i)=>OV.tags.push({x:d.x,y:d.y,kind:"n",c:"#ef8a17",text:"급수 "+(i+1)}));lg.push({c:"#1565c0",t:"급수차 경로 (충수→급수, 직선)"});
+      let a=1e18,b=1e18,c=-1e18,e=-1e18;for(const p of [TP.fill,...TP.del]){a=Math.min(a,p.x);c=Math.max(c,p.x);b=Math.min(b,p.y);e=Math.max(e,p.y);}for(const i of sc.cutN){a=Math.min(a,X[i]);c=Math.max(c,X[i]);b=Math.min(b,Y[i]);e=Math.max(e,Y[i]);}fit(a,b,c,e,50);}
+    setLegend(lg);redraw();
+    B.querySelectorAll("[data-tp]").forEach(x=>x.onclick=()=>flyTo(TP.fill.x,TP.fill.y,Math.max(view.s,0.6)));}
+  if(noCut&&WC.mode==="up"){const n=document.createElement("div");n.className="callout good";n.textContent="선택한 곳이 끊겨도 단수되는 구역이 없어 병물 계산이 필요 없습니다. 아래는 배수지 전단 사고 계산입니다.";B.prepend(n);}}
+function showCalcDetail(R,ctx){let m=$("#calcModal");if(!m){m=document.createElement("div");m.id="calcModal";m.className="modal";document.body.appendChild(m);}
+  m.innerHTML=`<div class="mbox"><div class="mhd"><b>상세 계산내역</b><button class="xbtn" id="mClose" aria-label="닫기"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+   <p class="note">${ctx.mode==="up"?`대상: ${esc(ctx.res)} — 배수지 전단 또는 배수지 사고로 배수지 유입이 끊긴 경우`:`대상: 배수지 후단 관로 사고 단수 구역 (공급 배수지 추정 ${esc(ctx.auto||"–")})`} · 가구 ${fmt(ctx.hh?ctx.hh.hh:0)} · 기준 ${hh2(HOUR)}:00</p>
+   <div class="csteps">${R.S.map(s=>`<div class="cstep"><div class="ch"><span class="no">${s.no||"·"}</span><span class="lb">${esc(s.lab)}</span><b>${esc(typeof s.val==="number"?fmt(s.val,s.val%1?2:0):s.val)} ${esc(s.unit)}</b></div><div class="cf">식: ${esc(s.formula)}</div><div class="cf">대입: ${esc(s.sub)}</div>${s.note?`<div class="cn">${esc(s.note)}</div>`:""}</div>`).join("")}</div>
+   ${R.trucks?`<div class="tbl"><table><thead><tr><th>투입 대수</th><th class="r">수급 횟수</th><th class="r">수급량</th><th>판정</th></tr></thead><tbody>${R.trucks.map(t=>`<tr><td>${t.k}대</td><td class="r">${t.trips}회</td><td class="r">${fmt(t.ton)} ton</td><td>${t.ton>=R.v6?"충분":"부족"}</td></tr>`).join("")}</tbody></table></div>`:""}
+   ${SRCNOTE}</div>`;
+  m.hidden=false;m.onclick=e=>{if(e.target===m)m.hidden=true;};$("#mClose").onclick=()=>m.hidden=true;}
 </script>
 </body></html>
