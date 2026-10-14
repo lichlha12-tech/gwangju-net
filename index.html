@@ -1486,7 +1486,7 @@ function openWater(){let sc=SC&&SC.cutN&&SC.cutN.length?SC:null;let noCut=false;
     ad("한 바퀴 시간","편도×2 + ⑪ 충수 + ⑫ 배수",`${TP.tt}×2+${P.fill}+${P.drain}`,rdn(TP.cyc,2),"hr");
     ad("대당 급수 횟수","1대: 올림((①−(편도+⑪+⑫))/한바퀴)+1, 2대부터 올림(((①−3)−(편도+⑪+⑫))/한바퀴)+1",`1대 ${TP.first}회, 추가 ${TP.more}회`,`${TP.first} / ${TP.more}`,"회");
     ad("필요 급수차","필요량÷⑦ 만큼 횟수를 채우는 최소 대수",`${TP.tripsNeed}회 필요 → ${TP.n}대 ${TP.trips}회`,TP.n,"대",TP.multi?`충수지점 한 곳 최대 ${TP.cap}대 → 충수지점을 늘려야 함`:"");}
-  const bott=`<div><span>병물 (${fmt(hh?hh.hh:0)}가구×2인×300L)</span><b>${R.L>0?`필요량 ${(Math.round(R.L/10)/100).toFixed(2)} ㎥ / 물병(2L) ${fmt(Math.ceil(R.L/2))}병`:"필요 없음"}</b></div>`;
+  const bott=`<div><span>병물 = ${fmt(hh?hh.hh:0)}가구 × 2인 × 300L × ${rdn(R.hrs||0,2)}hr ÷ 24h = ${fmt(Math.round(R.L||0))} L</span><b>${R.L>0?`필요량 ${(Math.round(R.L/10)/100).toFixed(2)} ㎥ / 물병(2L) ${fmt(Math.ceil(R.L/2))}병`:"필요 없음"}</b></div>`;
   const stat=WC.mode==="up"?`<div class="wres ${R.ok?"good":"bad"}">
      <div><span>⑤ 공급가능시간</span><b>${R.v5} hr</b></div><div><span>⑥ 배수지 부족량</span><b>${fmt(R.v6)} ton</b></div>
      <div><span>⑮ 급수차 최대</span><b>${R.v15} 대</b></div><div><span>⑬ 급수차 최대 공급</span><b>${fmt(R.v13)} ton</b></div>
