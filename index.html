@@ -1421,9 +1421,9 @@ function waterCalc(p){ // 전단(배수지 유입 중단): 물차산정식 + 병
   if(p.mode==="down"){
     const L=(p.hh||0)*WK.pph*WK.lpcd*v1/24;
     add("","배수지 후단 사고","배수지는 정상이지만 사고 관로 아래가 단수 → 급수차로 배수지를 채워도 단수 구역에 물이 가지 않음","—","병물 공급만 계산","");
-    add("","단수 가구수","단수 구역 수용가의 가구수 합",`수용가 ${fmt(p.m||0)}개`,p.hh||0,"가구");
-    add("","병물 공급량","가구수×2인×300 L/인·일×①/24",`${fmt(p.hh||0)}×${WK.pph}×${WK.lpcd}×${v1}/24`,Math.ceil(L),"L","단수시간 = ① 예상 복구시간");
-    add("","2 L 병 환산","올림(병물 공급량/2)",`${fmt(Math.ceil(L))}/2`,Math.ceil(L/2),"병");
+    add("","단수 가구수","단수 구역 수용가의 가구수 합",`수용가 ${fmt(p.m||0)}전`,p.hh||0,"가구");
+    add("","병물 필요량","가구수×2인×300 L/인·일×①/24 (㎥, 소수 둘째 자리)",`${fmt(p.hh||0)}×${WK.pph}×${WK.lpcd}×${v1}/24 = ${fmt(Math.round(L))} L`,(Math.round(L/10)/100).toFixed(2),"㎥","단수시간 = ① 예상 복구시간");
+    add("","물병(2 L) 수","올림(필요량 L/2)",`${fmt(Math.round(L))}/2`,Math.ceil(L/2),"병");
     return {S,mode:"down",L,hrs:v1};}
   const v2=p.q,v3=p.cap,v4=p.rate,vd=p.dead||0,v7=p.truck,v8=p.dist,v11=p.fill,v12=p.drain;
   const eff=Math.max(0,v4-vd);
@@ -1443,8 +1443,8 @@ function waterCalc(p){ // 전단(배수지 유입 중단): 물차산정식 + 병
   const short=Math.max(0,v6-v13);const hrs=short>0?short/(v2/24):0;const L=(p.hh||0)*WK.pph*WK.lpcd*hrs/24;
   add("","급수차 부족분","⑥−⑬",`${fmt(v6)}−${fmt(v13)}`,short,"ton");
   add("","단수시간(병물 기간)","부족분÷(②/24)",short?`${fmt(short)}÷(${fmt(v2)}/24)`:"부족분 0",rdn(hrs,2),"hr","급수차로 못 채운 양이 버티지 못하는 시간");
-  add("","병물 공급량","가구수×2인×300 L/인·일×단수시간/24",`${fmt(p.hh||0)}×${WK.pph}×${WK.lpcd}×${rdn(hrs,2)}/24`,Math.ceil(L),"L","가구수 = 이 배수지 주 급수구역(EPANET 흐름 50% 이상) 수용가 가구 합");
-  add("","2 L 병 환산","올림(병물 공급량/2)",`${fmt(Math.ceil(L))}/2`,Math.ceil(L/2),"병");
+  add("","병물 필요량","가구수×2인×300 L/인·일×단수시간/24 (㎥, 소수 둘째 자리)",`${fmt(p.hh||0)}×${WK.pph}×${WK.lpcd}×${rdn(hrs,2)}/24 = ${fmt(Math.round(L))} L`,(Math.round(L/10)/100).toFixed(2),"㎥","가구수 = 이 배수지 주 급수구역(EPANET 흐름 50% 이상) 수용가 가구 합");
+  add("","물병(2 L) 수","올림(필요량 L/2)",`${fmt(Math.round(L))}/2`,Math.ceil(L/2),"병");
   return {S,mode:"up",v5,v6,v13,v15,trucks,best,ok,need,L,hrs,short};}
 const SRCNOTE=`<div class="srcnote"><b>사용 자료</b><br>· 배수지 제원·공급량: 「배수지 시설물 현황(25년)」 — 시설용량, 설계수위(H.W.L·L.W.L), '25년 일최대·일평균 공급량, 사수위 0.5 m<br>· 급수구역·단수 구역: 광주시 수리검토 관망(EPANET 2.2, 현재기준)<br>· 가구수: 수용가 자료(수도미터, GIS 관망도 2026.10 보완분 포함)<br>· 병물 기준: 1인 1일 300 L, 가구당 2인 · 급수차 기본값: 15 t, 편도 60 km, 50 km/h, 충수·배수 각 0.5 hr</div>`;
 function truckPlan(sc,P,needTon){const cut=new Uint8Array(NN);for(const i of sc.cutN)cut[i]=1;
@@ -1486,13 +1486,13 @@ function openWater(){let sc=SC&&SC.cutN&&SC.cutN.length?SC:null;let noCut=false;
     ad("한 바퀴 시간","편도×2 + ⑪ 충수 + ⑫ 배수",`${TP.tt}×2+${P.fill}+${P.drain}`,rdn(TP.cyc,2),"hr");
     ad("대당 급수 횟수","1대: 올림((①−(편도+⑪+⑫))/한바퀴)+1, 2대부터 올림(((①−3)−(편도+⑪+⑫))/한바퀴)+1",`1대 ${TP.first}회, 추가 ${TP.more}회`,`${TP.first} / ${TP.more}`,"회");
     ad("필요 급수차","필요량÷⑦ 만큼 횟수를 채우는 최소 대수",`${TP.tripsNeed}회 필요 → ${TP.n}대 ${TP.trips}회`,TP.n,"대",TP.multi?`충수지점 한 곳 최대 ${TP.cap}대 → 충수지점을 늘려야 함`:"");}
-  const bott=`<div><span>병물 (${fmt(hh?hh.hh:0)}가구×2인×300L)</span><b>${R.L>0?`${fmt(Math.ceil(R.L/1000),0)} ㎥ · 2L ${fmt(Math.ceil(R.L/2))}병`:"필요 없음"}</b></div>`;
+  const bott=`<div><span>병물 (${fmt(hh?hh.hh:0)}가구×2인×300L)</span><b>${R.L>0?`필요량 ${(Math.round(R.L/10)/100).toFixed(2)} ㎥ / 물병(2L) ${fmt(Math.ceil(R.L/2))}병`:"필요 없음"}</b></div>`;
   const stat=WC.mode==="up"?`<div class="wres ${R.ok?"good":"bad"}">
      <div><span>⑤ 공급가능시간</span><b>${R.v5} hr</b></div><div><span>⑥ 배수지 부족량</span><b>${fmt(R.v6)} ton</b></div>
      <div><span>⑮ 급수차 최대</span><b>${R.v15} 대</b></div><div><span>⑬ 급수차 최대 공급</span><b>${fmt(R.v13)} ton</b></div>
      <div class="wj">${!R.need?"● 배수지 저류량으로 복구시간까지 버팀":R.ok?`● 급수차 ${R.best?R.best.k+"대":""} 운영 시 단수 없음`:`● 급수차 운영에도 부족 ${fmt(R.short)} ton → 병물 지원 필요`}</div>${bott}</div>`
    :`<div class="wres bad"><div class="wj">● 배수지 후단 사고: 급수차로 배수지를 채워도 단수 구역에 물이 가지 않아 병물로 공급</div>
-     <div><span>단수 수용가</span><b>${mtxt(hh?hh.m:null)}개 · ${fmt(hh?hh.hh:0)}가구</b></div><div><span>단수시간 (①)</span><b>${P.t} hr</b></div>${bott}</div>
+     <div><span>단수 수용가(전)</span><b>${mtxt(hh?hh.m:null)}전 · ${fmt(hh?hh.hh:0)}가구</b></div><div><span>단수시간 (①)</span><b>${P.t} hr</b></div>${bott}</div>
      ${TP?`<div class="opcard"><div class="ophead">참고 · 병물 대신 급수차로 직접 공급하면</div>
        <div class="tpsum">필요 <b>${fmt(TP.need)} ton</b> → 급수차 ${P.truck} t <b>${TP.n}대</b> (총 ${TP.trips}회, 한 바퀴 ${rdn(TP.cyc,1)} hr)${TP.multi?`<br><span style="color:#c62828">충수지점 한 곳에서 최대 ${TP.cap}대까지 → 충수지점을 늘려야 합니다</span>`:""}</div>
        <div class="opstep o"><span class="no">충</span><span class="nm"><b>충수: ${esc(TP.fill.kind)} ${esc(TP.fill.id)}</b><small>단수 구역 밖, 물이 나오는 가장 가까운 ${esc(TP.fill.kind)}${TP.fill.cal?" · 구경 "+TP.fill.cal+"mm":""}</small></span><button class="btn mini" data-tp="f">위치</button></div>
